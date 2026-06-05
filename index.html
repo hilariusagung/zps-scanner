@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -11,7 +12,9 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
@@ -38,7 +41,11 @@
       --gradient-success: linear-gradient(135deg, #22c55e, #06b6d4);
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -72,11 +79,15 @@
     }
 
     .logo-icon {
-      width: 40px; height: 40px;
+      width: 40px;
+      height: 40px;
       background: var(--gradient-primary);
       border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px; color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: white;
       box-shadow: var(--shadow-glow);
     }
 
@@ -101,14 +112,21 @@
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       color: var(--text-secondary);
-      width: 40px; height: 40px;
+      width: 40px;
+      height: 40px;
       border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 18px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
-    .btn-settings:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+    .btn-settings:hover {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
 
     /* ── STATUS BAR ── */
     .status-bar {
@@ -124,17 +142,34 @@
     }
 
     .status-dot {
-      width: 8px; height: 8px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: var(--accent-green);
       animation: pulse-dot 2s ease-in-out infinite;
     }
-    .status-dot.error { background: var(--accent-red); animation: none; }
-    .status-dot.scanning { background: var(--accent-blue); }
+
+    .status-dot.error {
+      background: var(--accent-red);
+      animation: none;
+    }
+
+    .status-dot.scanning {
+      background: var(--accent-blue);
+    }
 
     @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.85); }
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.5;
+        transform: scale(0.85);
+      }
     }
 
     /* ── SCANNER AREA ── */
@@ -156,7 +191,7 @@
       overflow: hidden;
       position: relative;
       background: #000;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 20px 60px rgba(0,0,0,0.5);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 20px 60px rgba(0, 0, 0, 0.5);
     }
 
     #reader {
@@ -170,12 +205,29 @@
     }
 
     /* Hide default UI from html5-qrcode */
-    #reader__scan_region { border: none !important; }
-    #reader__dashboard { display: none !important; }
-    #reader__header_message { display: none !important; }
-    #reader img[alt="Info icon"] { display: none !important; }
-    #reader__dashboard_section_swaplink { display: none !important; }
-    #reader__status_span { display: none !important; }
+    #reader__scan_region {
+      border: none !important;
+    }
+
+    #reader__dashboard {
+      display: none !important;
+    }
+
+    #reader__header_message {
+      display: none !important;
+    }
+
+    #reader img[alt="Info icon"] {
+      display: none !important;
+    }
+
+    #reader__dashboard_section_swaplink {
+      display: none !important;
+    }
+
+    #reader__status_span {
+      display: none !important;
+    }
 
     /* ── SCAN OVERLAY CORNERS ── */
     .scan-overlay {
@@ -187,19 +239,49 @@
 
     .scan-corner {
       position: absolute;
-      width: 32px; height: 32px;
+      width: 32px;
+      height: 32px;
       border-color: var(--accent-cyan);
       border-style: solid;
       border-width: 0;
     }
-    .scan-corner.tl { top: 20px; left: 20px; border-top-width: 3px; border-left-width: 3px; border-radius: 8px 0 0 0; }
-    .scan-corner.tr { top: 20px; right: 20px; border-top-width: 3px; border-right-width: 3px; border-radius: 0 8px 0 0; }
-    .scan-corner.bl { bottom: 20px; left: 20px; border-bottom-width: 3px; border-left-width: 3px; border-radius: 0 0 0 8px; }
-    .scan-corner.br { bottom: 20px; right: 20px; border-bottom-width: 3px; border-right-width: 3px; border-radius: 0 0 8px 0; }
+
+    .scan-corner.tl {
+      top: 20px;
+      left: 20px;
+      border-top-width: 3px;
+      border-left-width: 3px;
+      border-radius: 8px 0 0 0;
+    }
+
+    .scan-corner.tr {
+      top: 20px;
+      right: 20px;
+      border-top-width: 3px;
+      border-right-width: 3px;
+      border-radius: 0 8px 0 0;
+    }
+
+    .scan-corner.bl {
+      bottom: 20px;
+      left: 20px;
+      border-bottom-width: 3px;
+      border-left-width: 3px;
+      border-radius: 0 0 0 8px;
+    }
+
+    .scan-corner.br {
+      bottom: 20px;
+      right: 20px;
+      border-bottom-width: 3px;
+      border-right-width: 3px;
+      border-radius: 0 0 8px 0;
+    }
 
     .scan-line {
       position: absolute;
-      left: 20px; right: 20px;
+      left: 20px;
+      right: 20px;
       height: 2px;
       background: var(--gradient-primary);
       box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
@@ -208,10 +290,23 @@
     }
 
     @keyframes scan-sweep {
-      0% { top: 20px; opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { top: calc(100% - 22px); opacity: 0; }
+      0% {
+        top: 20px;
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 1;
+      }
+
+      90% {
+        opacity: 1;
+      }
+
+      100% {
+        top: calc(100% - 22px);
+        opacity: 0;
+      }
     }
 
     /* ── SCANNER HINT ── */
@@ -240,13 +335,20 @@
       opacity: 0;
       transition: opacity 0.15s ease;
     }
+
     .success-flash.active {
       opacity: 1;
       animation: flash-fade 0.6s ease forwards;
     }
+
     @keyframes flash-fade {
-      0% { opacity: 1; }
-      100% { opacity: 0; }
+      0% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0;
+      }
     }
 
     /* ── RESULT CARD ── */
@@ -263,11 +365,21 @@
       padding: 20px;
       animation: fadeIn 0.3s ease;
     }
-    .result-overlay.visible { display: flex; }
+
+    .result-overlay.visible {
+      display: flex;
+    }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .result-card {
@@ -282,14 +394,24 @@
     }
 
     @keyframes scaleIn {
-      from { opacity: 0; transform: scale(0.85); }
-      to { opacity: 1; transform: scale(1); }
+      from {
+        opacity: 0;
+        transform: scale(0.85);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
 
     .result-icon {
-      width: 72px; height: 72px;
+      width: 72px;
+      height: 72px;
       border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       margin: 0 auto 16px;
       font-size: 36px;
     }
@@ -330,8 +452,13 @@
     }
 
     @keyframes progress-fill {
-      from { width: 0%; }
-      to { width: 100%; }
+      from {
+        width: 0%;
+      }
+
+      to {
+        width: 100%;
+      }
     }
 
     .result-redirect-text {
@@ -356,8 +483,15 @@
       margin-top: 12px;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    .btn-redirect:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3); }
-    .btn-redirect:active { transform: scale(0.97); }
+
+    .btn-redirect:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-redirect:active {
+      transform: scale(0.97);
+    }
 
     .btn-scan-again {
       display: inline-flex;
@@ -375,7 +509,11 @@
       margin-top: 10px;
       transition: all 0.2s ease;
     }
-    .btn-scan-again:hover { background: var(--bg-card); color: var(--text-primary); }
+
+    .btn-scan-again:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
 
     /* ── SETTINGS MODAL ── */
     .settings-overlay {
@@ -390,7 +528,10 @@
       justify-content: flex-end;
       padding: 20px;
     }
-    .settings-overlay.visible { display: flex; }
+
+    .settings-overlay.visible {
+      display: flex;
+    }
 
     .settings-card {
       background: var(--bg-secondary);
@@ -403,8 +544,15 @@
     }
 
     @keyframes slideUp {
-      from { opacity: 0; transform: translateY(60px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(60px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .settings-title {
@@ -438,8 +586,14 @@
       outline: none;
       transition: border-color 0.2s ease;
     }
-    .settings-field input:focus { border-color: var(--accent-blue); }
-    .settings-field input::placeholder { color: var(--text-muted); }
+
+    .settings-field input:focus {
+      border-color: var(--accent-blue);
+    }
+
+    .settings-field input::placeholder {
+      color: var(--text-muted);
+    }
 
     .settings-hint {
       font-size: 12px;
@@ -467,8 +621,14 @@
       cursor: pointer;
       transition: transform 0.15s ease;
     }
-    .btn-save:hover { transform: translateY(-1px); }
-    .btn-save:active { transform: scale(0.98); }
+
+    .btn-save:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-save:active {
+      transform: scale(0.98);
+    }
 
     .btn-cancel {
       padding: 12px 20px;
@@ -482,7 +642,10 @@
       cursor: pointer;
       transition: all 0.2s ease;
     }
-    .btn-cancel:hover { background: var(--bg-card); }
+
+    .btn-cancel:hover {
+      background: var(--bg-card);
+    }
 
     /* ── FOOTER ── */
     .app-footer {
@@ -500,19 +663,25 @@
       text-align: center;
       padding: 40px 20px;
     }
+
     .no-camera-icon {
-      width: 80px; height: 80px;
+      width: 80px;
+      height: 80px;
       background: rgba(239, 68, 68, 0.1);
       color: var(--accent-red);
       border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       margin: 0 auto 16px;
       font-size: 36px;
     }
+
     .no-camera h3 {
       font-weight: 700;
       margin-bottom: 8px;
     }
+
     .no-camera p {
       color: var(--text-secondary);
       font-size: 14px;
@@ -520,13 +689,25 @@
       margin: 0 auto;
     }
 
-    .hidden { display: none !important; }
+    .hidden {
+      display: none !important;
+    }
 
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--text-muted);
+      border-radius: 3px;
+    }
   </style>
 </head>
+
 <body>
 
   <div class="success-flash" id="successFlash"></div>
@@ -577,7 +758,9 @@
       </div>
       <div class="result-sku" id="resultSKU">---</div>
       <div class="result-message">Barcode berhasil dipindai!</div>
-      <div class="result-redirect-bar"><div class="fill" id="redirectFill"></div></div>
+      <div class="result-redirect-bar">
+        <div class="fill" id="redirectFill"></div>
+      </div>
       <div class="result-redirect-text">Mengarahkan ke ZPS Webapp...</div>
       <button class="btn-redirect" onclick="redirectNow()">
         <i class="bi bi-box-arrow-up-right"></i> Buka Sekarang
@@ -644,7 +827,7 @@
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.2);
-      } catch(e) { /* silent fail */ }
+      } catch (e) { /* silent fail */ }
     }
 
     // ── Vibrate ──
@@ -669,7 +852,7 @@
           const url = new URL(raw);
           const sku = url.searchParams.get('scan');
           if (sku) return sku.toUpperCase().trim();
-        } catch(e) {
+        } catch (e) {
           const match = raw.match(/[?&]scan=([^&]+)/i);
           if (match) return match[1].toUpperCase().trim();
         }
@@ -741,7 +924,7 @@
         document.querySelector('.result-redirect-bar').style.display = 'none';
         document.querySelector('.result-redirect-text').textContent = '⚠️ URL Webapp belum diatur. Buka Pengaturan terlebih dahulu.';
         document.querySelector('.btn-redirect').innerHTML = '<i class="bi bi-gear"></i> Buka Pengaturan';
-        document.querySelector('.btn-redirect').onclick = function() {
+        document.querySelector('.btn-redirect').onclick = function () {
           closeResult();
           openSettings();
         };
@@ -834,13 +1017,13 @@
           { facingMode: 'environment' },
           config,
           onScanSuccess,
-          () => {} // abaikan scan failure (normal jika tidak ada kode di frame)
+          () => { } // abaikan scan failure (normal jika tidak ada kode di frame)
         );
 
         isScanning = true;
         setStatus('Kamera aktif — arahkan ke barcode', 'scanning');
 
-      } catch(err) {
+      } catch (err) {
         console.error('Camera error:', err);
         isScanning = false;
 
@@ -871,13 +1054,13 @@
       if (html5QrCode && isScanning) {
         try {
           await html5QrCode.stop();
-        } catch(e) { /* ok jika sudah berhenti */ }
+        } catch (e) { /* ok jika sudah berhenti */ }
         isScanning = false;
       }
     }
 
     // ── Initialize ──
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       if (!getWebappUrl()) {
         setStatus('URL Webapp belum diatur — buka Pengaturan', 'error');
       }
@@ -885,7 +1068,7 @@
     });
 
     // ── Pause/resume saat tab disembunyikan ──
-    document.addEventListener('visibilitychange', function() {
+    document.addEventListener('visibilitychange', function () {
       if (document.hidden) {
         stopScanner();
       } else if (!document.getElementById('resultOverlay').classList.contains('visible')) {
@@ -895,4 +1078,5 @@
   </script>
 
 </body>
+
 </html>
