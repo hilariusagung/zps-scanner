@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="ZPS Inventory Scanner - Pindai barcode/QR Code untuk manajemen stok cepat">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>ZPS Scanner</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- html5-qrcode library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: rgba(30, 41, 59, 0.7);
+      --bg-glass: rgba(15, 23, 42, 0.85);
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --accent-amber: #f59e0b;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border-subtle: rgba(148, 163, 184, 0.1);
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --radius-pill: 999px;
+      --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.15);
+      --gradient-primary: linear-gradient(135deg, #3b82f6, #06b6d4);
+      --gradient-success: linear-gradient(135deg, #22c55e, #06b6d4);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── HEADER ── */
+    .app-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      z-index: 10;
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: var(--gradient-primary);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: white;
+      box-shadow: var(--shadow-glow);
+    }
+
+    .logo-text {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.03em;
+    }
+
+    .btn-settings {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-settings:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+    /* ── STATUS BAR ── */
+    .status-bar {
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(30, 41, 59, 0.5);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    .status-dot.error { background: var(--accent-red); animation: none; }
+    .status-dot.scanning { background: var(--accent-blue); }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* ── SCANNER AREA ── */
+    .scanner-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+
+    .scanner-viewport {
+      width: 100%;
+      max-width: 400px;
+      aspect-ratio: 1;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      position: relative;
+      background: #000;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    #reader {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    #reader video {
+      object-fit: cover !important;
+      border-radius: var(--radius-xl) !important;
+    }
+
+    /* Hide default UI from html5-qrcode */
+    #reader__scan_region { border: none !important; }
+    #reader__dashboard { display: none !important; }
+    #reader__header_message { display: none !important; }
+    #reader img[alt="Info icon"] { display: none !important; }
+    #reader__dashboard_section_swaplink { display: none !important; }
+    #reader__status_span { display: none !important; }
+
+    /* ── SCAN OVERLAY CORNERS ── */
+    .scan-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .scan-corner {
+      position: absolute;
+      width: 32px; height: 32px;
+      border-color: var(--accent-cyan);
+      border-style: solid;
+      border-width: 0;
+    }
+    .scan-corner.tl { top: 20px; left: 20px; border-top-width: 3px; border-left-width: 3px; border-radius: 8px 0 0 0; }
+    .scan-corner.tr { top: 20px; right: 20px; border-top-width: 3px; border-right-width: 3px; border-radius: 0 8px 0 0; }
+    .scan-corner.bl { bottom: 20px; left: 20px; border-bottom-width: 3px; border-left-width: 3px; border-radius: 0 0 0 8px; }
+    .scan-corner.br { bottom: 20px; right: 20px; border-bottom-width: 3px; border-right-width: 3px; border-radius: 0 0 8px 0; }
+
+    .scan-line {
+      position: absolute;
+      left: 20px; right: 20px;
+      height: 2px;
+      background: var(--gradient-primary);
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+      animation: scan-sweep 2.5s ease-in-out infinite;
+      border-radius: 2px;
+    }
+
+    @keyframes scan-sweep {
+      0% { top: 20px; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { top: calc(100% - 22px); opacity: 0; }
+    }
+
+    /* ── SCANNER HINT ── */
+    .scanner-hint {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .scanner-hint i {
+      display: block;
+      font-size: 20px;
+      margin-bottom: 6px;
+      color: var(--accent-cyan);
+    }
+
+    /* ── SUCCESS FLASH ── */
+    .success-flash {
+      position: fixed;
+      inset: 0;
+      background: rgba(34, 197, 94, 0.15);
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .success-flash.active {
+      opacity: 1;
+      animation: flash-fade 0.6s ease forwards;
+    }
+    @keyframes flash-fade {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* ── RESULT CARD (shown after scan) ── */
+    .result-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(10px);
+      z-index: 50;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      animation: fadeIn 0.3s ease;
+    }
+    .result-overlay.visible { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+      animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .result-icon {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 36px;
+    }
+
+    .result-icon.success {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--accent-green);
+    }
+
+    .result-sku {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      letter-spacing: 0.02em;
+    }
+
+    .result-message {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .result-redirect-bar {
+      height: 4px;
+      background: var(--bg-card);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .result-redirect-bar .fill {
+      height: 100%;
+      background: var(--gradient-success);
+      border-radius: var(--radius-pill);
+      animation: progress-fill 2s linear forwards;
+    }
+
+    @keyframes progress-fill {
+      from { width: 0%; }
+      to { width: 100%; }
+    }
+
+    .result-redirect-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .btn-redirect {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      background: var(--gradient-primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-pill);
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .btn-redirect:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3); }
+    .btn-redirect:active { transform: scale(0.97); }
+
+    .btn-scan-again {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: all 0.2s ease;
+    }
+    .btn-scan-again:hover { background: var(--bg-card); color: var(--text-primary); }
+
+    /* ── SETTINGS MODAL ── */
+    .settings-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(10px);
+      z-index: 60;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 20px;
+    }
+    .settings-overlay.visible { display: flex; }
+
+    .settings-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      padding: 24px;
+      width: 100%;
+      max-width: 440px;
+      animation: slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(60px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .settings-title {
+      font-weight: 700;
+      font-size: 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .settings-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .settings-field input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    .settings-field input:focus { border-color: var(--accent-blue); }
+    .settings-field input::placeholder { color: var(--text-muted); }
+
+    .settings-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .settings-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-save {
+      flex: 1;
+      padding: 12px;
+      background: var(--gradient-primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    .btn-save:hover { transform: translateY(-1px); }
+    .btn-save:active { transform: scale(0.98); }
+
+    .btn-cancel {
+      padding: 12px 20px;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-cancel:hover { background: var(--bg-card); }
+
+    /* ── FOOTER ── */
+    .app-footer {
+      padding: 12px 20px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+    }
+
+    /* ── NO CAMERA STATE ── */
+    .no-camera {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .no-camera-icon {
+      width: 80px; height: 80px;
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--accent-red);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 36px;
+    }
+    .no-camera h3 {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .no-camera p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      max-width: 300px;
+      margin: 0 auto;
+    }
+
+    /* ── UTILITY ── */
+    .hidden { display: none !important; }
+
+    /* Dark scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <!-- Success Flash Effect -->
+  <div class="success-flash" id="successFlash"></div>
+
+  <!-- ─── HEADER ─── -->
+  <header class="app-header">
+    <div class="logo-group">
+      <div class="logo-icon"><i class="bi bi-qr-code-scan"></i></div>
+      <div>
+        <div class="logo-text">ZPS Scanner</div>
+        <div class="logo-sub">Inventory Quick Scan</div>
+      </div>
+    </div>
+    <button class="btn-settings" id="btnSettings" onclick="openSettings()" title="Pengaturan">
+      <i class="bi bi-gear"></i>
+    </button>
+  </header>
+
+  <!-- ─── STATUS BAR ─── -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Memulai kamera...</span>
+  </div>
+
+  <!-- ─── SCANNER ─── -->
+  <div class="scanner-container">
+    <div class="scanner-viewport" id="scannerViewport">
+      <div id="reader"></div>
+      <div class="scan-overlay">
+        <div class="scan-corner tl"></div>
+        <div class="scan-corner tr"></div>
+        <div class="scan-corner bl"></div>
+        <div class="scan-corner br"></div>
+        <div class="scan-line"></div>
+      </div>
+    </div>
+    <div class="scanner-hint">
+      <i class="bi bi-hand-index-thumb"></i>
+      Arahkan kamera ke Barcode atau QR Code
+    </div>
+  </div>
+
+  <!-- ─── RESULT OVERLAY ─── -->
+  <div class="result-overlay" id="resultOverlay">
+    <div class="result-card">
+      <div class="result-icon success">
+        <i class="bi bi-check-lg"></i>
+      </div>
+      <div class="result-sku" id="resultSKU">---</div>
+      <div class="result-message">Barcode berhasil dipindai!</div>
+      <div class="result-redirect-bar"><div class="fill" id="redirectFill"></div></div>
+      <div class="result-redirect-text">Mengarahkan ke ZPS Webapp...</div>
+      <button class="btn-redirect" onclick="redirectNow()">
+        <i class="bi bi-box-arrow-up-right"></i> Buka Sekarang
+      </button>
+      <br>
+      <button class="btn-scan-again" onclick="scanAgain()">
+        <i class="bi bi-arrow-repeat"></i> Scan Lagi
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── SETTINGS OVERLAY ─── -->
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-card">
+      <div class="settings-title"><i class="bi bi-gear"></i> Pengaturan Scanner</div>
+      <div class="settings-field">
+        <label for="inputWebappUrl">URL Webapp ZPS</label>
+        <input type="url" id="inputWebappUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        <div class="settings-hint">
+          <i class="bi bi-info-circle"></i> Masukkan URL deployment webapp Apps Script Anda.
+          URL ini digunakan untuk redirect setelah barcode berhasil dipindai.
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button class="btn-cancel" onclick="closeSettings()">Batal</button>
+        <button class="btn-save" onclick="saveSettings()"><i class="bi bi-check-lg"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── FOOTER ─── -->
+  <footer class="app-footer">
+    ZPS Inventory Scanner &bull; Powered by html5-qrcode
+  </footer>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ZPS SCANNER — Real-time Camera Barcode/QR Scanner
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const STORAGE_KEY_URL = 'zps_scanner_webapp_url';
+    let html5QrCode = null;
+    let isScanning = false;
+    let lastScannedCode = '';
+    let lastScanTime = 0;
+    let detectedSKU = '';
+    let redirectTimer = null;
+
+    // ── Audio Context for beep sound ──
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1200, ctx.currentTime);
+        osc.frequency.setValueAtTime(1600, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.2);
+      } catch(e) { /* silent fail */ }
+    }
+
+    // ── Vibrate ──
+    function vibrateDevice() {
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    }
+
+    // ── Status Bar Update ──
+    function setStatus(text, type) {
+      const dot = document.getElementById('statusDot');
+      const txt = document.getElementById('statusText');
+      txt.textContent = text;
+      dot.className = 'status-dot';
+      if (type === 'error') dot.classList.add('error');
+      else if (type === 'scanning') dot.classList.add('scanning');
+    }
+
+    // ── Extract SKU from scanned text ──
+    function extractSKU(raw) {
+      // If it's a URL with ?scan=XXX parameter
+      if (raw.includes('scan=')) {
+        try {
+          const url = new URL(raw);
+          const sku = url.searchParams.get('scan');
+          if (sku) return sku.toUpperCase().trim();
+        } catch(e) {
+          const match = raw.match(/[?&]scan=([^&]+)/i);
+          if (match) return match[1].toUpperCase().trim();
+        }
+      }
+      // Otherwise treat the entire scanned text as the SKU
+      return raw.toUpperCase().trim();
+    }
+
+    // ── Get Webapp URL ──
+    function getWebappUrl() {
+      return localStorage.getItem(STORAGE_KEY_URL) || '';
+    }
+
+    // ── Build redirect URL ──
+    function buildRedirectUrl(sku) {
+      const base = getWebappUrl();
+      if (!base) return '';
+      const separator = base.includes('?') ? '&' : '?';
+      return base + separator + 'scan=' + encodeURIComponent(sku);
+    }
+
+    // ── On Scan Success ──
+    function onScanSuccess(decodedText) {
+      // Debounce: prevent duplicate scans within 3 seconds
+      const now = Date.now();
+      if (decodedText === lastScannedCode && (now - lastScanTime) < 3000) return;
+      lastScannedCode = decodedText;
+      lastScanTime = now;
+
+      const sku = extractSKU(decodedText);
+      if (!sku) return;
+
+      detectedSKU = sku;
+
+      // Feedback
+      playBeep();
+      vibrateDevice();
+
+      // Flash effect
+      const flash = document.getElementById('successFlash');
+      flash.classList.add('active');
+      setTimeout(() => flash.classList.remove('active'), 600);
+
+      // Stop scanner
+      stopScanner();
+
+      // Check if webapp URL is configured
+      const webappUrl = getWebappUrl();
+      if (!webappUrl) {
+        showResult(sku, false);
+        return;
+      }
+
+      showResult(sku, true);
+
+      // Auto-redirect after 2 seconds
+      redirectTimer = setTimeout(() => {
+        redirectNow();
+      }, 2000);
+    }
+
+    // ── Show Result ──
+    function showResult(sku, hasUrl) {
+      document.getElementById('resultSKU').textContent = sku;
+      const overlay = document.getElementById('resultOverlay');
+      overlay.classList.add('visible');
+
+      const fill = document.getElementById('redirectFill');
+      // Reset animation
+      fill.style.animation = 'none';
+      fill.offsetHeight; // trigger reflow
+      fill.style.animation = '';
+
+      if (!hasUrl) {
+        document.querySelector('.result-redirect-bar').style.display = 'none';
+        document.querySelector('.result-redirect-text').textContent = '⚠️ URL Webapp belum diatur. Buka Pengaturan terlebih dahulu.';
+        document.querySelector('.btn-redirect').innerHTML = '<i class="bi bi-gear"></i> Buka Pengaturan';
+        document.querySelector('.btn-redirect').onclick = function() {
+          closeResult();
+          openSettings();
+        };
+      } else {
+        document.querySelector('.result-redirect-bar').style.display = '';
+        document.querySelector('.result-redirect-text').textContent = 'Mengarahkan ke ZPS Webapp...';
+        document.querySelector('.btn-redirect').innerHTML = '<i class="bi bi-box-arrow-up-right"></i> Buka Sekarang';
+        document.querySelector('.btn-redirect').onclick = redirectNow;
+      }
+    }
+
+    // ── Redirect Now ──
+    function redirectNow() {
+      if (redirectTimer) clearTimeout(redirectTimer);
+      const url = buildRedirectUrl(detectedSKU);
+      if (url) {
+        window.location.href = url;
+      }
+    }
+
+    // ── Scan Again ──
+    function scanAgain() {
+      if (redirectTimer) clearTimeout(redirectTimer);
+      closeResult();
+      startScanner();
+    }
+
+    // ── Close Result ──
+    function closeResult() {
+      document.getElementById('resultOverlay').classList.remove('visible');
+    }
+
+    // ── Settings ──
+    function openSettings() {
+      document.getElementById('inputWebappUrl').value = getWebappUrl();
+      document.getElementById('settingsOverlay').classList.add('visible');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsOverlay').classList.remove('visible');
+    }
+
+    function saveSettings() {
+      const url = document.getElementById('inputWebappUrl').value.trim();
+      if (url) {
+        localStorage.setItem(STORAGE_KEY_URL, url);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_URL);
+      }
+      closeSettings();
+      setStatus('URL Webapp tersimpan ✓', 'scanning');
+    }
+
+    // ── Start Scanner ──
+    async function startScanner() {
+      if (isScanning) return;
+
+      const readerEl = document.getElementById('reader');
+      readerEl.innerHTML = ''; // clear previous
+
+      try {
+        html5QrCode = new Html5Qrcode('reader');
+
+        const config = {
+          fps: 15,
+          qrbox: function(viewfinderWidth, viewfinderHeight) {
+            const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+            const size = Math.floor(minDim * 0.75);
+            return { width: size, height: size };
+          },
+          aspectRatio: 1.0,
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.DATA_MATRIX,
+            Html5QrcodeSupportedFormats.ITF
+          ]
+        };
+
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          config,
+          onScanSuccess,
+          () => {} // ignore scan failures
+        );
+
+        isScanning = true;
+        setStatus('Kamera aktif — arahkan ke barcode', 'scanning');
+
+      } catch(err) {
+        console.error('Camera error:', err);
+        isScanning = false;
+
+        if (err.toString().includes('NotAllowedError') || err.toString().includes('Permission')) {
+          setStatus('Izin kamera ditolak', 'error');
+          document.getElementById('scannerViewport').innerHTML = `
+            <div class="no-camera">
+              <div class="no-camera-icon"><i class="bi bi-camera-video-off"></i></div>
+              <h3>Izin Kamera Diperlukan</h3>
+              <p>Aktifkan izin kamera di pengaturan browser Anda, lalu muat ulang halaman ini.</p>
+            </div>
+          `;
+        } else {
+          setStatus('Gagal membuka kamera', 'error');
+          document.getElementById('scannerViewport').innerHTML = `
+            <div class="no-camera">
+              <div class="no-camera-icon"><i class="bi bi-exclamation-triangle"></i></div>
+              <h3>Kamera Tidak Tersedia</h3>
+              <p>Pastikan perangkat memiliki kamera dan tidak digunakan oleh aplikasi lain.</p>
+            </div>
+          `;
+        }
+      }
+    }
+
+    // ── Stop Scanner ──
+    async function stopScanner() {
+      if (html5QrCode && isScanning) {
+        try {
+          await html5QrCode.stop();
+        } catch(e) { /* ok */ }
+        isScanning = false;
+      }
+    }
+
+    // ── Initialize ──
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if webapp URL is configured
+      if (!getWebappUrl()) {
+        setStatus('URL Webapp belum diatur — buka Pengaturan', 'error');
+        // Still start scanner, but remind user
+      }
+
+      // Start the camera scanner
+      startScanner();
+    });
+
+    // ── Cleanup on page hide ──
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) {
+        stopScanner();
+      } else if (!document.getElementById('resultOverlay').classList.contains('visible')) {
+        startScanner();
+      }
+    });
+  </script>
+
+</body>
+</html>
