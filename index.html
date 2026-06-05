@@ -985,17 +985,9 @@
       readerEl.innerHTML = '';
 
       try {
-        html5QrCode = new Html5Qrcode('reader', { verbose: false });
-
-        const config = {
-          fps: 15,
-
-          // FIX #2: Ganti function qrbox dengan ukuran tetap yang lebih besar.
-          // 280x180 cocok untuk barcode 1D (EAN-13, Code128) DAN QR Code.
-          qrbox: { width: 280, height: 180 },
-
-          // FIX #5: Tentukan format barcode secara eksplisit untuk performa
-          // dan akurasi lebih baik pada inventory scanner.
+        // PERBAIKAN UTAMA: formatsToSupport harus dimasukkan ke dalam constructor Html5Qrcode, bukan start()!
+        html5QrCode = new Html5Qrcode('reader', {
+          verbose: false,
           formatsToSupport: [
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.EAN_13,
@@ -1004,17 +996,32 @@
             Html5QrcodeSupportedFormats.CODE_39,
             Html5QrcodeSupportedFormats.UPC_A,
             Html5QrcodeSupportedFormats.UPC_E,
-          ],
+          ]
+        });
 
-          // FIX #1: videoConstraints DIHAPUS dari sini.
-          // Jangan taruh facingMode di dua tempat sekaligus —
-          // konflik ini yang menyebabkan kamera gagal di Android.
+        const config = {
+          fps: 15,
+
+          // PERBAIKAN UKURAN SCANNER: Menggunakan fungsi responsif agar fit di semua device
+          // dan memiliki aspect ratio persegi panjang (widescreen) yang optimal untuk barcode 1D.
+          qrbox: function (viewfinderWidth, viewfinderHeight) {
+            const width = Math.floor(viewfinderWidth * 0.75);
+            const height = Math.floor(viewfinderHeight * 0.35);
+            return {
+              width: Math.max(250, Math.min(width, 350)),
+              height: Math.max(120, Math.min(height, 200))
+            };
+          }
         };
 
-        // FIX #1: Semua constraint kamera HANYA ada di parameter pertama.
-        // Tidak ada duplikasi facingMode di config.
+        // PERBAIKAN RESOLUSI: Paksa browser meminta resolusi kamera HD (720p/1080p).
+        // Tanpa ini, browser default ke 640x480 (sangat buram dan tidak bisa decode barcode 1D kecil).
         await html5QrCode.start(
-          { facingMode: 'environment' },
+          {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
           config,
           onScanSuccess,
           () => { } // abaikan scan failure (normal jika tidak ada kode di frame)
@@ -1061,6 +1068,16 @@
 
     // ── Initialize ──
     document.addEventListener('DOMContentLoaded', function () {
+      // Baca parameter query 'webapp_url' jika ada (untuk konfigurasi otomatis)
+      const urlParams = new URLSearchParams(window.location.search);
+      const webappUrlParam = urlParams.get('webapp_url');
+      if (webappUrlParam) {
+        localStorage.setItem(STORAGE_KEY_URL, webappUrlParam.trim());
+        // Bersihkan parameter di bilah alamat agar rapi
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setStatus('URL Webapp terkonfigurasi otomatis ✓', 'scanning');
+      }
+
       if (!getWebappUrl()) {
         setStatus('URL Webapp belum diatur — buka Pengaturan', 'error');
       }
