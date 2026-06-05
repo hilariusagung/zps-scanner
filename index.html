@@ -9,13 +9,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>ZPS Scanner</title>
 
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <!-- html5-qrcode library -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
@@ -252,7 +249,7 @@
       100% { opacity: 0; }
     }
 
-    /* ── RESULT CARD (shown after scan) ── */
+    /* ── RESULT CARD ── */
     .result-overlay {
       position: fixed;
       inset: 0;
@@ -523,10 +520,8 @@
       margin: 0 auto;
     }
 
-    /* ── UTILITY ── */
     .hidden { display: none !important; }
 
-    /* Dark scrollbar */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
@@ -534,10 +529,9 @@
 </head>
 <body>
 
-  <!-- Success Flash Effect -->
   <div class="success-flash" id="successFlash"></div>
 
-  <!-- ─── HEADER ─── -->
+  <!-- HEADER -->
   <header class="app-header">
     <div class="logo-group">
       <div class="logo-icon"><i class="bi bi-qr-code-scan"></i></div>
@@ -551,13 +545,13 @@
     </button>
   </header>
 
-  <!-- ─── STATUS BAR ─── -->
+  <!-- STATUS BAR -->
   <div class="status-bar" id="statusBar">
     <div class="status-dot" id="statusDot"></div>
     <span id="statusText">Memulai kamera...</span>
   </div>
 
-  <!-- ─── SCANNER ─── -->
+  <!-- SCANNER -->
   <div class="scanner-container">
     <div class="scanner-viewport" id="scannerViewport">
       <div id="reader"></div>
@@ -575,7 +569,7 @@
     </div>
   </div>
 
-  <!-- ─── RESULT OVERLAY ─── -->
+  <!-- RESULT OVERLAY -->
   <div class="result-overlay" id="resultOverlay">
     <div class="result-card">
       <div class="result-icon success">
@@ -595,7 +589,7 @@
     </div>
   </div>
 
-  <!-- ─── SETTINGS OVERLAY ─── -->
+  <!-- SETTINGS OVERLAY -->
   <div class="settings-overlay" id="settingsOverlay">
     <div class="settings-card">
       <div class="settings-title"><i class="bi bi-gear"></i> Pengaturan Scanner</div>
@@ -614,15 +608,18 @@
     </div>
   </div>
 
-  <!-- ─── FOOTER ─── -->
+  <!-- FOOTER -->
   <footer class="app-footer">
     ZPS Inventory Scanner &bull; Powered by html5-qrcode
   </footer>
 
   <script>
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ZPS SCANNER — Real-time Camera Barcode/QR Scanner
-    // ═══════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════
+    // ZPS SCANNER — Fixed Version
+    // Fixes: #1 konflik videoConstraints, #2 qrbox sempit,
+    //        #3 stopScanner tidak di-await, #4 scanAgain race condition,
+    //        #5 tidak ada formatsToSupport
+    // ════════════════════════════════════════════════════════════
 
     const STORAGE_KEY_URL = 'zps_scanner_webapp_url';
     let html5QrCode = null;
@@ -632,7 +629,7 @@
     let detectedSKU = '';
     let redirectTimer = null;
 
-    // ── Audio Context for beep sound ──
+    // ── Audio beep ──
     function playBeep() {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -655,7 +652,7 @@
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     }
 
-    // ── Status Bar Update ──
+    // ── Status Bar ──
     function setStatus(text, type) {
       const dot = document.getElementById('statusDot');
       const txt = document.getElementById('statusText');
@@ -667,7 +664,6 @@
 
     // ── Extract SKU from scanned text ──
     function extractSKU(raw) {
-      // If it's a URL with ?scan=XXX parameter
       if (raw.includes('scan=')) {
         try {
           const url = new URL(raw);
@@ -678,7 +674,6 @@
           if (match) return match[1].toUpperCase().trim();
         }
       }
-      // Otherwise treat the entire scanned text as the SKU
       return raw.toUpperCase().trim();
     }
 
@@ -695,9 +690,9 @@
       return base + separator + 'scan=' + encodeURIComponent(sku);
     }
 
-    // ── On Scan Success ──
-    function onScanSuccess(decodedText) {
-      // Debounce: prevent duplicate scans within 3 seconds
+    // ── FIX #3: onScanSuccess sekarang async ──
+    async function onScanSuccess(decodedText) {
+      // Debounce: cegah scan duplikat dalam 3 detik
       const now = Date.now();
       if (decodedText === lastScannedCode && (now - lastScanTime) < 3000) return;
       lastScannedCode = decodedText;
@@ -708,19 +703,16 @@
 
       detectedSKU = sku;
 
-      // Feedback
       playBeep();
       vibrateDevice();
 
-      // Flash effect
       const flash = document.getElementById('successFlash');
       flash.classList.add('active');
       setTimeout(() => flash.classList.remove('active'), 600);
 
-      // Stop scanner
-      stopScanner();
+      // FIX #3: await stopScanner agar scanner benar-benar berhenti
+      await stopScanner();
 
-      // Check if webapp URL is configured
       const webappUrl = getWebappUrl();
       if (!webappUrl) {
         showResult(sku, false);
@@ -729,7 +721,6 @@
 
       showResult(sku, true);
 
-      // Auto-redirect after 2 seconds
       redirectTimer = setTimeout(() => {
         redirectNow();
       }, 2000);
@@ -742,9 +733,8 @@
       overlay.classList.add('visible');
 
       const fill = document.getElementById('redirectFill');
-      // Reset animation
       fill.style.animation = 'none';
-      fill.offsetHeight; // trigger reflow
+      fill.offsetHeight;
       fill.style.animation = '';
 
       if (!hasUrl) {
@@ -767,14 +757,13 @@
     function redirectNow() {
       if (redirectTimer) clearTimeout(redirectTimer);
       const url = buildRedirectUrl(detectedSKU);
-      if (url) {
-        window.location.href = url;
-      }
+      if (url) window.location.href = url;
     }
 
-    // ── Scan Again ──
-    function scanAgain() {
+    // ── FIX #4: scanAgain sekarang async + await stop ──
+    async function scanAgain() {
       if (redirectTimer) clearTimeout(redirectTimer);
+      await stopScanner(); // FIX #4: tunggu stop selesai sebelum start
       closeResult();
       startScanner();
     }
@@ -805,35 +794,47 @@
       setStatus('URL Webapp tersimpan ✓', 'scanning');
     }
 
-    // ── Start Scanner ──
+    // ── FIX #1 + #2 + #5: startScanner dengan semua perbaikan ──
     async function startScanner() {
       if (isScanning) return;
 
       const readerEl = document.getElementById('reader');
-      readerEl.innerHTML = ''; // clear previous
+      readerEl.innerHTML = '';
 
       try {
-        html5QrCode = new Html5Qrcode('reader');
+        html5QrCode = new Html5Qrcode('reader', { verbose: false });
 
         const config = {
           fps: 15,
-          qrbox: function(viewfinderWidth, viewfinderHeight) {
-            const width = Math.min(Math.floor(viewfinderWidth * 0.85), 340);
-            const height = Math.min(Math.floor(viewfinderHeight * 0.4), 150);
-            return { width: width, height: height };
-          },
-          videoConstraints: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
+
+          // FIX #2: Ganti function qrbox dengan ukuran tetap yang lebih besar.
+          // 280x180 cocok untuk barcode 1D (EAN-13, Code128) DAN QR Code.
+          qrbox: { width: 280, height: 180 },
+
+          // FIX #5: Tentukan format barcode secara eksplisit untuk performa
+          // dan akurasi lebih baik pada inventory scanner.
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+          ],
+
+          // FIX #1: videoConstraints DIHAPUS dari sini.
+          // Jangan taruh facingMode di dua tempat sekaligus —
+          // konflik ini yang menyebabkan kamera gagal di Android.
         };
 
+        // FIX #1: Semua constraint kamera HANYA ada di parameter pertama.
+        // Tidak ada duplikasi facingMode di config.
         await html5QrCode.start(
           { facingMode: 'environment' },
           config,
           onScanSuccess,
-          () => {} // ignore scan failures
+          () => {} // abaikan scan failure (normal jika tidak ada kode di frame)
         );
 
         isScanning = true;
@@ -853,7 +854,7 @@
             </div>
           `;
         } else {
-          setStatus('Gagal membuka kamera', 'error');
+          setStatus('Gagal membuka kamera: ' + err.message, 'error');
           document.getElementById('scannerViewport').innerHTML = `
             <div class="no-camera">
               <div class="no-camera-icon"><i class="bi bi-exclamation-triangle"></i></div>
@@ -870,24 +871,20 @@
       if (html5QrCode && isScanning) {
         try {
           await html5QrCode.stop();
-        } catch(e) { /* ok */ }
+        } catch(e) { /* ok jika sudah berhenti */ }
         isScanning = false;
       }
     }
 
     // ── Initialize ──
     document.addEventListener('DOMContentLoaded', function() {
-      // Check if webapp URL is configured
       if (!getWebappUrl()) {
         setStatus('URL Webapp belum diatur — buka Pengaturan', 'error');
-        // Still start scanner, but remind user
       }
-
-      // Start the camera scanner
       startScanner();
     });
 
-    // ── Cleanup on page hide ──
+    // ── Pause/resume saat tab disembunyikan ──
     document.addEventListener('visibilitychange', function() {
       if (document.hidden) {
         stopScanner();
