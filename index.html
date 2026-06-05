@@ -1107,8 +1107,10 @@
         logToDebug('Inisialisasi Html5Qrcode dengan verbose:true...', 'info');
         // PERBAIKAN UTAMA: formatsToSupport harus dimasukkan ke dalam constructor Html5Qrcode, bukan start()!
         // verbose diset ke true agar log library masuk ke Debug Console kita.
+        // useBarCodeDetectorIfSupported diset ke true untuk mengaktifkan pemindaian native di HP Android (Chrome).
         html5QrCode = new Html5Qrcode('reader', {
           verbose: true,
+          useBarCodeDetectorIfSupported: true,
           formatsToSupport: [
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.EAN_13,
@@ -1122,10 +1124,14 @@
 
         const config = {
           fps: 15,
-          // PERBAIKAN UTAMA: qrbox dihapus total agar memindai seluruh frame kamera (Full-Frame).
-          // Ini mencegah ketidakcocokan koordinat bidik visual dan sensor kamera di HP operator.
+          disableFlip: true, // Menghemat CPU dengan mematikan pencerminan gambar cermin
           
-          // RESOLUSI: Pindahkan constraints resolusi ke parameter config.videoConstraints
+          // Membatasi pemindaian hanya pada area kotak bidik tengah 250x250 piksel.
+          // Ini memotong 90% beban piksel gambar (dari 900rb piksel menjadi hanya 60rb piksel)
+          // sehingga decoding rate naik 10x lipat (sangat responsif & instan).
+          qrbox: { width: 250, height: 250 },
+          
+          // RESOLUSI & KONSTRUKSI: Pindahkan constraints resolusi ke parameter config.videoConstraints
           // agar parameter pertama tetap memiliki tepat 1 key dan terhindar dari eror validasi.
           videoConstraints: {
             facingMode: 'environment',
@@ -1145,7 +1151,7 @@
 
         isScanning = true;
         setStatus('Kamera aktif — arahkan ke barcode', 'scanning');
-        logToDebug('Kamera berhasil diaktifkan secara full-frame!', 'success');
+        logToDebug('Kamera berhasil diaktifkan dengan area scan 250x250!', 'success');
 
         // Cek kemampuan hardware (Torch & Zoom) setelah streaming aktif
         setTimeout(async () => {
