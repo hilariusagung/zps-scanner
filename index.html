@@ -815,29 +815,22 @@
       try {
         html5QrCode = new Html5Qrcode('reader');
 
-        const constraints = {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        };
-
         const config = {
           fps: 15,
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.DATA_MATRIX,
-            Html5QrcodeSupportedFormats.ITF
-          ]
+          qrbox: function(viewfinderWidth, viewfinderHeight) {
+            const width = Math.min(Math.floor(viewfinderWidth * 0.85), 340);
+            const height = Math.min(Math.floor(viewfinderHeight * 0.4), 150);
+            return { width: width, height: height };
+          },
+          videoConstraints: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
         };
 
         await html5QrCode.start(
-          constraints,
+          { facingMode: 'environment' },
           config,
           onScanSuccess,
           () => {} // ignore scan failures
