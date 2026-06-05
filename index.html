@@ -815,14 +815,14 @@
       try {
         html5QrCode = new Html5Qrcode('reader');
 
+        const constraints = {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        };
+
         const config = {
           fps: 15,
-          qrbox: function(viewfinderWidth, viewfinderHeight) {
-            const minDim = Math.min(viewfinderWidth, viewfinderHeight);
-            const size = Math.floor(minDim * 0.75);
-            return { width: size, height: size };
-          },
-          aspectRatio: 1.0,
           formatsToSupport: [
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.CODE_128,
@@ -837,7 +837,7 @@
         };
 
         await html5QrCode.start(
-          { facingMode: 'environment' },
+          constraints,
           config,
           onScanSuccess,
           () => {} // ignore scan failures
