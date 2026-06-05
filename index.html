@@ -792,9 +792,30 @@
   </div>
 
   <!-- FOOTER -->
-  <footer class="app-footer">
-    ZPS Inventory Scanner &bull; Powered by html5-qrcode
+  <footer class="app-footer" style="padding-bottom: 6px;">
+    ZPS Inventory Scanner &bull; v2.5 (Full-Frame & HD Engine) &bull; Powered by html5-qrcode
   </footer>
+
+  <!-- DEBUG PANEL TOGGLE BUTTON -->
+  <div style="text-align: center; padding: 10px; background: rgba(15, 23, 42, 0.4); border-top: 1px solid var(--border-subtle);">
+    <button onclick="toggleDebugConsole()" style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-secondary); padding: 6px 14px; border-radius: var(--radius-pill); font-size: 11px; cursor: pointer; font-weight: 600;">
+      <i class="bi bi-terminal me-1"></i> Tampilkan Log Debug
+    </button>
+  </div>
+
+  <!-- DEBUG CONSOLE OVERLAY -->
+  <div id="debugConsoleOverlay" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.96); z-index: 999; display: none; flex-direction: column; padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+      <span style="font-weight: 700; font-size: 14px; color: var(--accent-cyan);"><i class="bi bi-terminal-fill me-2"></i>Log Sistem Scanner</span>
+      <div style="display: flex; gap: 8px;">
+        <button onclick="clearDebugConsole()" style="background: transparent; border: 1px solid var(--border-subtle); color: var(--text-secondary); padding: 4px 10px; border-radius: 8px; font-size: 11px; cursor: pointer;">Hapus Log</button>
+        <button onclick="toggleDebugConsole()" style="background: var(--accent-red); border: none; color: white; padding: 4px 12px; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: 600;">Tutup</button>
+      </div>
+    </div>
+    <div id="debugLogsContainer" style="flex: 1; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 1.5; color: #a3e635; background: #020617; border-radius: 12px; padding: 12px; border: 1px solid var(--border-subtle);">
+      <!-- Logs will be written here -->
+    </div>
+  </div>
 
   <script>
     // ════════════════════════════════════════════════════════════
@@ -806,6 +827,63 @@
 
     const STORAGE_KEY_URL = 'zps_scanner_webapp_url';
     let html5QrCode = null;
+
+    // ── Log Interceptor untuk Debugging Mobile ──
+    function logToDebug(msg, type = 'info') {
+      const container = document.getElementById('debugLogsContainer');
+      if (!container) return;
+      const p = document.createElement('div');
+      const time = new Date().toLocaleTimeString();
+      let color = '#38bdf8'; // info (cyan)
+      if (type === 'error') color = '#f87171'; // red
+      else if (type === 'warn') color = '#fbbf24'; // yellow
+      else if (type === 'success') color = '#4ade80'; // green
+      p.style.color = color;
+      p.style.marginBottom = '4px';
+      p.style.wordBreak = 'break-all';
+      p.innerHTML = `<span style="color:#64748b">[${time}]</span> [${type.toUpperCase()}] ${msg}`;
+      container.appendChild(p);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Intersep fungsi console
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      logToDebug(args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), 'info');
+    };
+    console.error = function(...args) {
+      originalError.apply(console, args);
+      logToDebug(args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), 'error');
+    };
+    console.warn = function(...args) {
+      originalWarn.apply(console, args);
+      logToDebug(args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), 'warn');
+    };
+
+    window.addEventListener('error', function(e) {
+      logToDebug(`${e.message} at ${e.filename}:${e.lineno}:${e.colno}`, 'error');
+    });
+
+    window.addEventListener('unhandledrejection', function(e) {
+      logToDebug(`Unhandled Promise Rejection: ${e.reason}`, 'error');
+    });
+
+    function toggleDebugConsole() {
+      const el = document.getElementById('debugConsoleOverlay');
+      if (el) {
+        el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+      }
+    }
+
+    function clearDebugConsole() {
+      const container = document.getElementById('debugLogsContainer');
+      if (container) container.innerHTML = '';
+      logToDebug('Log dibersihkan.', 'success');
+    }
     let isScanning = false;
     let lastScannedCode = '';
     let lastScanTime = 0;
@@ -985,9 +1063,11 @@
       readerEl.innerHTML = '';
 
       try {
+        logToDebug('Inisialisasi Html5Qrcode dengan verbose:true...', 'info');
         // PERBAIKAN UTAMA: formatsToSupport harus dimasukkan ke dalam constructor Html5Qrcode, bukan start()!
+        // verbose diset ke true agar log library masuk ke Debug Console kita.
         html5QrCode = new Html5Qrcode('reader', {
-          verbose: false,
+          verbose: true,
           formatsToSupport: [
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.EAN_13,
@@ -1001,26 +1081,18 @@
 
         const config = {
           fps: 15,
-
-          // PERBAIKAN UKURAN SCANNER: Menggunakan fungsi responsif agar fit di semua device
-          // dan memiliki aspect ratio persegi panjang (widescreen) yang optimal untuk barcode 1D.
-          qrbox: function (viewfinderWidth, viewfinderHeight) {
-            const width = Math.floor(viewfinderWidth * 0.75);
-            const height = Math.floor(viewfinderHeight * 0.35);
-            return {
-              width: Math.max(250, Math.min(width, 350)),
-              height: Math.max(120, Math.min(height, 200))
-            };
-          }
+          // PERBAIKAN UTAMA: qrbox dihapus total agar memindai seluruh frame kamera (Full-Frame).
+          // Ini mencegah ketidakcocokan koordinat bidik visual dan sensor kamera di HP operator.
         };
 
-        // PERBAIKAN RESOLUSI: Paksa browser meminta resolusi kamera HD (720p/1080p).
-        // Tanpa ini, browser default ke 640x480 (sangat buram dan tidak bisa decode barcode 1D kecil).
+        logToDebug('Memulai streaming kamera (facingMode: environment, HD resolution)...', 'info');
+        // PERBAIKAN RESOLUSI: Menggunakan batasan resolusi yang fleksibel (min/ideal/max)
+        // agar kompatibel di berbagai tipe HP operator (Samsung, Xiaomi, Oppo, iPhone).
         await html5QrCode.start(
           {
             facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
           },
           config,
           onScanSuccess,
@@ -1029,6 +1101,7 @@
 
         isScanning = true;
         setStatus('Kamera aktif — arahkan ke barcode', 'scanning');
+        logToDebug('Kamera berhasil diaktifkan secara full-frame!', 'success');
 
       } catch (err) {
         console.error('Camera error:', err);
@@ -1068,17 +1141,26 @@
 
     // ── Initialize ──
     document.addEventListener('DOMContentLoaded', function () {
+      logToDebug('Scanner App v2.5 (Full-Frame HD Engine) initialized', 'success');
+      logToDebug('Browser UA: ' + navigator.userAgent, 'info');
+      logToDebug('Viewport: ' + window.innerWidth + 'x' + window.innerHeight, 'info');
+      logToDebug('Protokol: ' + window.location.protocol, 'info');
+
       // Baca parameter query 'webapp_url' jika ada (untuk konfigurasi otomatis)
       const urlParams = new URLSearchParams(window.location.search);
       const webappUrlParam = urlParams.get('webapp_url');
       if (webappUrlParam) {
         localStorage.setItem(STORAGE_KEY_URL, webappUrlParam.trim());
+        logToDebug('URL Webapp baru diset dari parameter query: ' + webappUrlParam.trim(), 'success');
         // Bersihkan parameter di bilah alamat agar rapi
         window.history.replaceState({}, document.title, window.location.pathname);
         setStatus('URL Webapp terkonfigurasi otomatis ✓', 'scanning');
       }
 
-      if (!getWebappUrl()) {
+      const webappUrl = getWebappUrl();
+      logToDebug('URL Webapp terdaftar: ' + (webappUrl || 'TIDAK ADA'), webappUrl ? 'success' : 'warn');
+
+      if (!webappUrl) {
         setStatus('URL Webapp belum diatur — buka Pengaturan', 'error');
       }
       startScanner();
