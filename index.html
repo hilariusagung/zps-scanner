@@ -721,9 +721,14 @@
         <div class="logo-sub">Inventory Quick Scan</div>
       </div>
     </div>
-    <button class="btn-settings" id="btnSettings" onclick="openSettings()" title="Pengaturan">
-      <i class="bi bi-gear"></i>
-    </button>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn-settings" id="btnTorch" onclick="toggleTorch()" title="Nyalakan Senter" style="display: none;">
+        <i class="bi bi-lightbulb"></i>
+      </button>
+      <button class="btn-settings" id="btnSettings" onclick="openSettings()" title="Pengaturan">
+        <i class="bi bi-gear"></i>
+      </button>
+    </div>
   </header>
 
   <!-- STATUS BAR -->
@@ -1055,6 +1060,42 @@
       setStatus('URL Webapp tersimpan ✓', 'scanning');
     }
 
+    // ── Toggle Senter (Flashlight / Torch) ──
+    let isTorchOn = false;
+    async function toggleTorch() {
+      if (!html5QrCode || !isScanning) {
+        logToDebug('Kamera belum aktif. Senter tidak bisa dinyalakan.', 'warn');
+        return;
+      }
+      try {
+        const track = typeof html5QrCode.getRunningTrack === 'function' ? html5QrCode.getRunningTrack() : null;
+        if (!track) {
+          logToDebug('Gagal mengakses track video kamera.', 'error');
+          return;
+        }
+        const capabilities = typeof track.getCapabilities === 'function' ? track.getCapabilities() : {};
+        if (capabilities.torch) {
+          isTorchOn = !isTorchOn;
+          logToDebug('Mengubah status senter ke: ' + (isTorchOn ? 'ON' : 'OFF') + '...', 'info');
+          await track.applyConstraints({
+            advanced: [{ torch: isTorchOn }]
+          });
+          const btn = document.getElementById('btnTorch');
+          if (btn) {
+            btn.innerHTML = isTorchOn 
+              ? '<i class="bi bi-lightbulb-fill" style="color: var(--accent-amber);"></i>' 
+              : '<i class="bi bi-lightbulb"></i>';
+            btn.title = isTorchOn ? 'Matikan Senter' : 'Nyalakan Senter';
+          }
+          logToDebug('Senter berhasil diubah!', 'success');
+        } else {
+          logToDebug('Senter (torch) tidak didukung di perangkat ini.', 'warn');
+        }
+      } catch (e) {
+        logToDebug('Gagal mengubah senter: ' + e.message, 'error');
+      }
+    }
+
     // ── FIX #1 + #2 + #5: startScanner dengan semua perbaikan ──
     async function startScanner() {
       if (isScanning) return;
@@ -1083,17 +1124,19 @@
           fps: 15,
           // PERBAIKAN UTAMA: qrbox dihapus total agar memindai seluruh frame kamera (Full-Frame).
           // Ini mencegah ketidakcocokan koordinat bidik visual dan sensor kamera di HP operator.
-        };
-
-        logToDebug('Memulai streaming kamera (facingMode: environment, HD resolution)...', 'info');
-        // PERBAIKAN RESOLUSI: Menggunakan batasan resolusi yang fleksibel (min/ideal/max)
-        // agar kompatibel di berbagai tipe HP operator (Samsung, Xiaomi, Oppo, iPhone).
-        await html5QrCode.start(
-          {
-            facingMode: 'environment',
+          
+          // RESOLUSI: Pindahkan constraints resolusi ke parameter config.videoConstraints
+          // agar parameter pertama tetap memiliki tepat 1 key dan terhindar dari eror validasi.
+          videoConstraints: {
             width: { min: 640, ideal: 1280, max: 1920 },
             height: { min: 480, ideal: 720, max: 1080 }
-          },
+          }
+        };
+
+        logToDebug('Memulai streaming kamera (facingMode: environment)...', 'info');
+        // JAMINAN 1 KEY: Parameter pertama HANYA berisi facingMode untuk lolos validasi library.
+        await html5QrCode.start(
+          { facingMode: 'environment' },
           config,
           onScanSuccess,
           () => { } // abaikan scan failure (normal jika tidak ada kode di frame)
@@ -1102,6 +1145,46 @@
         isScanning = true;
         setStatus('Kamera aktif — arahkan ke barcode', 'scanning');
         logToDebug('Kamera berhasil diaktifkan secara full-frame!', 'success');
+
+        // Cek kemampuan hardware (Torch & Zoom) setelah streaming aktif
+        setTimeout(async () => {
+          try {
+            const track = typeof html5QrCode.getRunningTrack === 'function' ? html5QrCode.getRunningTrack() : null;
+            if (track) {
+              const capabilities = typeof track.getCapabilities === 'function' ? track.getCapabilities() : {};
+              logToDebug('Camera Capabilities: ' + JSON.stringify(capabilities), 'info');
+              
+              // 1. Deteksi Senter (Torch)
+              const btnTorch = document.getElementById('btnTorch');
+              if (btnTorch) {
+                if (capabilities.torch) {
+                  btnTorch.style.display = 'flex';
+                  logToDebug('Fitur Senter didukung oleh HP ini.', 'success');
+                } else {
+                  btnTorch.style.display = 'none';
+                  logToDebug('Fitur Senter TIDAK didukung oleh HP ini.', 'info');
+                }
+              }
+
+              // 2. Deteksi & Set Zoom Otomatis (Mencegah lensa buram jarak dekat)
+              if (capabilities.zoom) {
+                const minZoom = capabilities.zoom.min || 1;
+                const maxZoom = capabilities.zoom.max || 1;
+                const idealZoom = Math.min(1.8, maxZoom);
+                
+                if (idealZoom > minZoom) {
+                  logToDebug('Menerapkan Auto-Zoom Digital: ' + idealZoom + 'x (Mencegah buram)', 'info');
+                  await track.applyConstraints({
+                    advanced: [{ zoom: idealZoom }]
+                  });
+                  logToDebug('Auto-Zoom berhasil diterapkan.', 'success');
+                }
+              }
+            }
+          } catch (e) {
+            logToDebug('Gagal memproses kemampuan kamera: ' + e.message, 'warn');
+          }
+        }, 1000);
 
       } catch (err) {
         console.error('Camera error:', err);
@@ -1136,6 +1219,13 @@
           await html5QrCode.stop();
         } catch (e) { /* ok jika sudah berhenti */ }
         isScanning = false;
+      }
+      // Reset status senter (torch)
+      isTorchOn = false;
+      const btn = document.getElementById('btnTorch');
+      if (btn) {
+        btn.style.display = 'none';
+        btn.innerHTML = '<i class="bi bi-lightbulb"></i>';
       }
     }
 
