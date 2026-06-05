@@ -158,18 +158,16 @@
       overflow: hidden;
     }
 
-    #reader {
-      position: absolute;
-      inset: 0;
-      width: 100% !important;
-      height: 100% !important;
-      z-index: 2;
-    }
-
+    #reader,
+    #reader__scan_region,
     #reader video {
+      position: absolute !important;
+      inset: 0 !important;
       width: 100% !important;
       height: 100% !important;
       object-fit: cover !important;
+      border: none !important;
+      z-index: 2;
     }
 
     /* Translucent Mask Overlay with Cutout */
@@ -234,6 +232,10 @@
     }
 
     #reader__status_span {
+      display: none !important;
+    }
+
+    #reader canvas {
       display: none !important;
     }
 
@@ -788,7 +790,7 @@
 
   <!-- FOOTER -->
   <footer class="app-footer" style="padding-bottom: 6px;">
-    ZPS Inventory Scanner &bull; v2.5 (Full-Frame & HD Engine) &bull; Powered by html5-qrcode
+    ZPS Inventory Scanner &bull; v2.7 (Full-Frame & HD Engine) &bull; Powered by html5-qrcode
   </footer>
 
   <!-- DEBUG PANEL TOGGLE BUTTON -->
@@ -1199,7 +1201,7 @@
 
         if (err.toString().includes('NotAllowedError') || err.toString().includes('Permission')) {
           setStatus('Izin kamera ditolak', 'error');
-          document.getElementById('scannerViewport').innerHTML = `
+          document.getElementById('reader').innerHTML = `
             <div class="no-camera">
               <div class="no-camera-icon"><i class="bi bi-camera-video-off"></i></div>
               <h3>Izin Kamera Diperlukan</h3>
@@ -1208,7 +1210,7 @@
           `;
         } else {
           setStatus('Gagal membuka kamera: ' + err.message, 'error');
-          document.getElementById('scannerViewport').innerHTML = `
+          document.getElementById('reader').innerHTML = `
             <div class="no-camera">
               <div class="no-camera-icon"><i class="bi bi-exclamation-triangle"></i></div>
               <h3>Kamera Tidak Tersedia</h3>
@@ -1238,7 +1240,7 @@
 
     // ── Initialize ──
     document.addEventListener('DOMContentLoaded', function () {
-      logToDebug('Scanner App v2.5 (Full-Frame HD Engine) initialized', 'success');
+      logToDebug('Scanner App v2.7 (Full-Frame HD Engine) initialized', 'success');
       logToDebug('Browser UA: ' + navigator.userAgent, 'info');
       logToDebug('Viewport: ' + window.innerWidth + 'x' + window.innerHeight, 'info');
       logToDebug('Protokol: ' + window.location.protocol, 'info');
