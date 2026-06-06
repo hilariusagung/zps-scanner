@@ -1196,12 +1196,14 @@
       reservationDebounceTimer = setTimeout(function() {
         if (!activeSKU) return;
         const expires = Date.now() + 5 * 60 * 1000; // 5 menit TTL
+        const resRef = firebase.database().ref('/zps_reservations/' + activeSKU + '/' + stockSessionId);
         
-        firebase.database().ref('/zps_reservations/' + activeSKU + '/' + stockSessionId).set({
+        resRef.set({
           qty: qtyVal,
           expires: expires
         }).then(function() {
           console.log('Firebase reservation written from scanner:', activeSKU, qtyVal);
+          resRef.onDisconnect().remove();
           
           if (type === 'KELUAR') {
             const currentEffective = getEffectiveStock(activeSKU, committedStock) + qtyVal;
@@ -1221,9 +1223,11 @@
 
     function clearReservation(sku) {
       if (!firebaseInitialized || typeof firebase === 'undefined' || !sku) return;
-      firebase.database().ref('/zps_reservations/' + sku + '/' + stockSessionId).remove()
+      const resRef = firebase.database().ref('/zps_reservations/' + sku + '/' + stockSessionId);
+      resRef.remove()
         .then(() => console.log('Reservation cleared for', sku))
         .catch(err => console.error('Clear reservation error:', err));
+      resRef.onDisconnect().cancel();
     }
 
     function listenToReservations(sku, originalStock) {
@@ -1927,6 +1931,11 @@
 
     // Event listener sebelum unload tab untuk membersihkan reservasi
     window.addEventListener('beforeunload', function() {
+      if (activeSKU) {
+        clearReservation(activeSKU);
+      }
+    });
+    window.addEventListener('pagehide', function() {
       if (activeSKU) {
         clearReservation(activeSKU);
       }
