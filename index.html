@@ -876,7 +876,7 @@
 
       // Mulai fetch data barang
       const separator = webappUrl.includes('?') ? '&' : '?';
-      const requestUrl = webappUrl + separator + 'scan=' + encodeURIComponent(sku);
+      const requestUrl = webappUrl + separator + 'action=get_scan_detail&sku=' + encodeURIComponent(sku);
 
       try {
         logToDebug('Mengirim permintaan fetch ke: ' + requestUrl, 'info');
@@ -1039,15 +1039,15 @@
           // Membatasi scan hanya pada kotak tengah 250x250
           qrbox: { width: 250, height: 250 },
           
-          // Meminta resolusi rendah ideal 640x480 agar dekode per frame secepat kilat
+          // Menggunakan resolusi HD ideal 1280x720 agar autofokus kamera utama berfungsi maksimal
           videoConstraints: {
             facingMode: 'environment',
-            width: { min: 640, ideal: 640, max: 1280 },
-            height: { min: 480, ideal: 480, max: 720 }
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
           }
         };
 
-        logToDebug('Memulai streaming kamera (640x480 @ 30fps)...', 'info');
+        logToDebug('Memulai streaming kamera (1280x720 @ 30fps)...', 'info');
         await html5QrCode.start(
           { facingMode: 'environment' },
           config,
