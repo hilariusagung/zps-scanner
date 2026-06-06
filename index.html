@@ -1399,21 +1399,43 @@
     // STEP 1: Inisialisasi Kamera (getUserMedia)
     // ════════════════════════════════════════════════════════════
     async function initCamera() {
-      cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width:  { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width:  { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+      } catch (e) {
+        logToDebug('Gagal dengan resolusi ideal 720p, mencoba fallback default...', 'warn');
+        try {
+          cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: 'environment'
+            },
+            audio: false
+          });
+        } catch (fallbackErr) {
+          throw new Error('Tidak dapat mengakses kamera belakang: ' + fallbackErr.message);
+        }
+      }
 
       const readerEl = document.getElementById('reader');
       readerEl.innerHTML = '';
       cameraVideo = document.createElement('video');
+      
+      // iOS Safari Compatibility: Set properties directly on DOM object
+      cameraVideo.playsInline = true;
+      cameraVideo.muted = true;
+      cameraVideo.autoplay = true;
+      
+      // Set HTML attributes as secondary fallback
       cameraVideo.setAttribute('playsinline', 'true');
       cameraVideo.setAttribute('muted', 'true');
       cameraVideo.setAttribute('autoplay', 'true');
+      
       cameraVideo.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;';
       readerEl.appendChild(cameraVideo);
       cameraVideo.srcObject = cameraStream;
@@ -1495,8 +1517,6 @@
       logToDebug('Mesin: jsQR canvas decoder (universal, iPhone compatible)', 'success');
 
       const canvas = document.createElement('canvas');
-      canvas.width  = 1280;
-      canvas.height = 720;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
       scanLoopId = setInterval(() => {
@@ -1505,6 +1525,32 @@
           return;
         }
         if (!cameraVideo || cameraVideo.readyState < 2) return;
+
+        // Ambil resolusi video asli secara dinamis
+        const videoWidth = cameraVideo.videoWidth;
+        const videoHeight = cameraVideo.videoHeight;
+
+        // Tentukan batas maksimal lebar/tinggi canvas untuk optimasi performa jsQR
+        // Cukup dengan 640px agar proses deteksi lancar dan CPU tidak panas
+        const maxDimension = 640;
+        let targetWidth = videoWidth;
+        let targetHeight = videoHeight;
+
+        if (videoWidth > maxDimension || videoHeight > maxDimension) {
+          if (videoWidth > videoHeight) {
+            targetWidth = maxDimension;
+            targetHeight = Math.round((videoHeight / videoWidth) * maxDimension);
+          } else {
+            targetHeight = maxDimension;
+            targetWidth = Math.round((videoWidth / videoHeight) * maxDimension);
+          }
+        }
+
+        // Atur ukuran canvas secara dinamis (menjaga aspek rasio asli agar QR tidak gepeng)
+        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+        }
 
         ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
