@@ -664,11 +664,11 @@
               <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; font-family: var(--font-display);">Pilihan Satuan</label>
               <div style="display: flex; gap: 8px;">
                 <label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; cursor: pointer; font-size: 11px; color: var(--text-primary);">
-                  <input type="radio" name="satuanPilihan" value="satuan" id="satDasar" checked onchange="updatePemasukanPreviewScanner()">
+                  <input type="radio" name="satuanPilihan" value="satuan" id="satDasar" checked onchange="updateSoftReservationFirebase()">
                   <span id="lblDasar">Satuan</span>
                 </label>
                 <label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; cursor: pointer; font-size: 11px; color: var(--text-primary);">
-                  <input type="radio" name="satuanPilihan" value="pak" id="satPak" onchange="updatePemasukanPreviewScanner()">
+                  <input type="radio" name="satuanPilihan" value="pak" id="satPak" onchange="updateSoftReservationFirebase()">
                   <span id="lblPak">Pak</span>
                 </label>
               </div>
@@ -1153,12 +1153,20 @@
       if (!activeSKU || !firebaseInitialized || typeof firebase === 'undefined') return;
       
       const type = document.getElementById('transactionType').value;
-      if (type !== 'KELUAR') {
+      let qtyVal = Math.round(Number(document.getElementById('inputQty').value)) || 0;
+      
+      if (qtyVal < 0) qtyVal = 0;
+      
+      if (type === 'MASUK') {
+        const isPak = document.getElementById('satPak') && document.getElementById('satPak').checked;
+        if (isPak && scannedItem && scannedItem.konversi_pak) {
+          qtyVal = Math.round(qtyVal * scannedItem.konversi_pak);
+        }
+        qtyVal = -qtyVal; // Nilai negatif untuk menambah stok efektif pada proyeksi realtime
+      } else if (type !== 'KELUAR') {
         clearReservation(activeSKU);
         return;
       }
-      
-      const qtyVal = Math.round(Number(document.getElementById('inputQty').value)) || 0;
       
       clearTimeout(reservationDebounceTimer);
       reservationDebounceTimer = setTimeout(function() {
@@ -1171,15 +1179,17 @@
         }).then(function() {
           console.log('Firebase reservation written from scanner:', activeSKU, qtyVal);
           
-          // Cek stok efektif yang tersisa
-          const currentEffective = getEffectiveStock(activeSKU, committedStock) + qtyVal;
-          const warnEl = document.getElementById('qtyWarning');
-          
-          if (qtyVal > currentEffective) {
-            warnEl.textContent = 'Peringatan: Jumlah melebihi stok tersedia (' + currentEffective + ' ' + (scannedItem ? scannedItem.satuan_stok : '') + ')!';
-            warnEl.style.display = 'block';
+          if (type === 'KELUAR') {
+            const currentEffective = getEffectiveStock(activeSKU, committedStock) + qtyVal;
+            const warnEl = document.getElementById('qtyWarning');
+            if (qtyVal > currentEffective) {
+              warnEl.textContent = 'Peringatan: Jumlah melebihi stok tersedia (' + currentEffective + ' ' + (scannedItem ? scannedItem.satuan_stok : '') + ')!';
+              warnEl.style.display = 'block';
+            } else {
+              warnEl.style.display = 'none';
+            }
           } else {
-            warnEl.style.display = 'none';
+            document.getElementById('qtyWarning').style.display = 'none';
           }
         });
       }, 300);
@@ -1727,6 +1737,33 @@
       }
     }
 
+    // ── Logika Update Stok Komit dari Signal ──
+    let lastProcessedStokSignal = null;
+
+    async function refreshActiveSKUStock() {
+      if (!activeSKU) return;
+      const webappUrl = getWebappUrl();
+      if (!webappUrl) return;
+      const separator = webappUrl.includes('?') ? '&' : '?';
+      const requestUrl = webappUrl + separator + 'action=get_scan_detail&sku=' + encodeURIComponent(activeSKU);
+      
+      try {
+        logToDebug('Background fetch untuk update stok committed SKU: ' + activeSKU, 'info');
+        const response = await fetch(requestUrl, { method: 'GET', redirect: 'follow' });
+        const text = await response.text();
+        const result = JSON.parse(text);
+        if (result && result.success && result.data && activeSKU === result.data.sku) {
+          scannedItem = result.data;
+          committedStock = result.data.sisa_stok;
+          const effective = getEffectiveStock(activeSKU, committedStock);
+          updateDisplayedStock(effective);
+          logToDebug('Stok committed diperbarui secara realtime dari server: ' + committedStock, 'success');
+        }
+      } catch(e) {
+        logToDebug('Gagal merefresh stok committed di background: ' + e.message, 'warn');
+      }
+    }
+
     // ── Logika Inisialisasi Firebase ──
     function initFirebase() {
       const dbUrl = localStorage.getItem('zps_firebase_url');
@@ -1745,6 +1782,18 @@
             setStatus('Kamera aktif (Offline)', 'error');
           }
         });
+
+        // Listen ke signals/stok untuk me-refresh data committed stock secara realtime saat ada transaksi selesai
+        firebase.database().ref('/zps_signals/stok').on('value', function(snapshot) {
+          const sig = snapshot.val();
+          if (!sig) return;
+          if (lastProcessedStokSignal && lastProcessedStokSignal !== sig) {
+            logToDebug('Signal stok berubah: ' + sig + ', merefresh data...', 'info');
+            refreshActiveSKUStock();
+          }
+          lastProcessedStokSignal = sig;
+        });
+
       } catch(e) {
         logToDebug('Error initFirebase: ' + e.message, 'error');
       }
