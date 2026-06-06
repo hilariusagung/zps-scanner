@@ -2,6 +2,15 @@
 <html lang="id">
 
 <head>
+  <script>
+    // Deteksi dini scan param untuk mencegah flash visual viewfinder gelap
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('scan')) {
+        document.documentElement.classList.add('direct-scan-mode');
+      }
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="ZPS Inventory Scanner - Pindai barcode/QR Code untuk manajemen stok cepat">
@@ -78,6 +87,21 @@
       --shadow-glow: 0 4px 20px rgba(13, 110, 253, 0.08);
       --gradient-primary: linear-gradient(135deg, #0d6efd, #0dcaf0);
       --gradient-success: linear-gradient(135deg, #198754, #0dcaf0);
+    }
+
+    /* Direct Scan Mode - Mengeliminasi Flash Viewfinder Kamera */
+    html.direct-scan-mode body {
+      background: var(--color-bg) !important;
+    }
+    html.direct-scan-mode .scanner-container,
+    html.direct-scan-mode .status-bar,
+    html.direct-scan-mode .floating-bottom,
+    html.direct-scan-mode .floating-header {
+      display: none !important;
+    }
+    html.direct-scan-mode .result-overlay {
+      display: flex !important;
+      background: var(--color-bg) !important;
     }
 
     * {
@@ -1410,6 +1434,7 @@
 
     // ── Scan Again ──
     async function scanAgain() {
+      document.documentElement.classList.remove('direct-scan-mode');
       if (activeSKU) {
         clearReservation(activeSKU);
         stopListeningToReservations();
@@ -1422,6 +1447,7 @@
 
     // ── Close Result ──
     function closeResult() {
+      document.documentElement.classList.remove('direct-scan-mode');
       if (activeSKU) {
         clearReservation(activeSKU);
         stopListeningToReservations();
