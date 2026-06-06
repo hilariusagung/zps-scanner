@@ -653,12 +653,28 @@
             </select>
           </div>
           
+          <!-- Toggle Satuan (jika ada pak) -->
+          <div id="toggleSatuanWrap" style="margin-bottom: 10px; display: none;">
+            <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; font-family: var(--font-display);">Pilihan Satuan</label>
+            <div style="display: flex; gap: 8px;">
+              <label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; cursor: pointer; font-size: 11px; color: var(--text-primary);">
+                <input type="radio" name="satuanPilihan" value="satuan" id="satDasar" checked onchange="updateSoftReservationFirebase()">
+                <span id="lblDasar">Satuan</span>
+              </label>
+              <label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; cursor: pointer; font-size: 11px; color: var(--text-primary);">
+                <input type="radio" name="satuanPilihan" value="pak" id="satPak" onchange="updateSoftReservationFirebase()">
+                <span id="lblPak">Pak</span>
+              </label>
+            </div>
+          </div>
+          
           <!-- Input Jumlah -->
           <div style="margin-bottom: 10px;">
-            <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; font-family: var(--font-display);">Jumlah</label>
+            <label id="inputQtyLabel" style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; font-family: var(--font-display);">Jumlah</label>
             <input type="number" id="inputQty" min="1" step="1" placeholder="Masukkan jumlah" oninput="updateSoftReservationFirebase()" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 13px; font-weight: 700; font-family: var(--font-body);">
             <!-- Warning Qty -->
             <div id="qtyWarning" style="color: var(--accent-red); font-size: 10px; margin-top: 4px; display: none; font-weight: 600;"></div>
+            <div id="qtyInPreview" style="color: var(--accent-green); font-size: 10px; margin-top: 4px; display: none; font-weight: 600;"></div>
           </div>
           
           <!-- Bagian Transaksi Keluar (Pengeluaran) -->
@@ -683,28 +699,6 @@
           
           <!-- Bagian Transaksi Masuk (Pemasukan) -->
           <div id="sectionMasuk" style="display: none;">
-            <!-- Toggle Satuan (jika ada pak) -->
-            <div id="toggleSatuanWrap" style="margin-bottom: 10px; display: none;">
-              <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; font-family: var(--font-display);">Pilihan Satuan</label>
-              <div style="display: flex; gap: 8px;">
-                <label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; cursor: pointer; font-size: 11px; color: var(--text-primary);">
-                  <input type="radio" name="satuanPilihan" value="satuan" id="satDasar" checked onchange="updateSoftReservationFirebase()">
-                  <span id="lblDasar">Satuan</span>
-                </label>
-                <label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; cursor: pointer; font-size: 11px; color: var(--text-primary);">
-                  <input type="radio" name="satuanPilihan" value="pak" id="satPak" onchange="updateSoftReservationFirebase()">
-                  <span id="lblPak">Pak</span>
-                </label>
-              </div>
-              <div id="qtyInPreview" style="color: var(--accent-green); font-size: 10px; margin-top: 4px; display: none; font-weight: 600;"></div>
-            </div>
-            
-            <!-- Harga Satuan (opsional) -->
-            <div style="margin-bottom: 10px;">
-              <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; font-family: var(--font-display);">Harga Satuan (Rp, Opsional)</label>
-              <input type="number" id="hargaSatuan" placeholder="Contoh: 15000" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 12px; font-family: var(--font-body);">
-            </div>
-            
             <!-- Supplier (opsional) -->
             <div style="margin-bottom: 10px;">
               <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; font-family: var(--font-display);">Supplier (Opsional)</label>
@@ -1008,7 +1002,12 @@
       if (data.konversi_pak) {
         toggleSatWrap.style.display = 'block';
         document.getElementById('lblDasar').textContent = data.satuan_stok.toUpperCase();
-        document.getElementById('lblPak').textContent = 'PAK'; // default
+        let packName = 'PAK';
+        if (data.isi_per_pak) {
+          const match = data.isi_per_pak.match(/^([^(]+)/);
+          if (match) packName = match[1].trim();
+        }
+        document.getElementById('lblPak').textContent = packName.toUpperCase();
         document.getElementById('satDasar').checked = true;
       } else {
         toggleSatWrap.style.display = 'none';
@@ -1019,7 +1018,6 @@
       document.getElementById('qtyWarning').style.display = 'none';
       document.getElementById('qtyInPreview').style.display = 'none';
       document.getElementById('catatan').value = '';
-      document.getElementById('hargaSatuan').value = '';
       document.getElementById('supplier').value = '';
       document.getElementById('divisiTujuan').value = '';
       document.getElementById('tujuanKeluar').value = 'Produksi';
@@ -1156,23 +1154,31 @@
       updateSoftReservationFirebase();
     }
 
-    function updatePemasukanPreviewScanner() {
+    function updateQtyPreviewScanner() {
       if (!scannedItem) return;
       const qtyVal = Number(document.getElementById('inputQty').value) || 0;
       const previewEl = document.getElementById('qtyInPreview');
+      const labelEl = document.getElementById('inputQtyLabel');
       
       const isPak = document.getElementById('satPak') && document.getElementById('satPak').checked;
-      if (isPak && scannedItem.konversi_pak && qtyVal > 0) {
-        const converted = Math.round(qtyVal * scannedItem.konversi_pak);
-        previewEl.textContent = `Konversi ke Satuan Dasar: ${converted} ${scannedItem.satuan_stok}`;
-        previewEl.style.display = 'block';
+      if (isPak && scannedItem.konversi_pak) {
+        const packLabel = document.getElementById('lblPak').textContent || 'PAK';
+        labelEl.textContent = 'Jumlah (' + packLabel + ')';
+        if (qtyVal > 0) {
+          const converted = Math.round(qtyVal * scannedItem.konversi_pak);
+          previewEl.textContent = `Konversi ke Satuan Dasar: ${converted} ${scannedItem.satuan_stok}`;
+          previewEl.style.display = 'block';
+        } else {
+          previewEl.style.display = 'none';
+        }
       } else {
+        labelEl.textContent = 'Jumlah (' + scannedItem.satuan_stok.toUpperCase() + ')';
         previewEl.style.display = 'none';
       }
     }
 
     function updateSoftReservationFirebase() {
-      updatePemasukanPreviewScanner();
+      updateQtyPreviewScanner();
       
       if (!activeSKU || !firebaseInitialized || typeof firebase === 'undefined') return;
       
@@ -1181,11 +1187,12 @@
       
       if (qtyVal < 0) qtyVal = 0;
       
+      const isPak = document.getElementById('satPak') && document.getElementById('satPak').checked;
+      if (isPak && scannedItem && scannedItem.konversi_pak) {
+        qtyVal = Math.round(qtyVal * scannedItem.konversi_pak);
+      }
+
       if (type === 'MASUK') {
-        const isPak = document.getElementById('satPak') && document.getElementById('satPak').checked;
-        if (isPak && scannedItem && scannedItem.konversi_pak) {
-          qtyVal = Math.round(qtyVal * scannedItem.konversi_pak);
-        }
         qtyVal = -qtyVal; // Nilai negatif untuk menambah stok efektif pada proyeksi realtime
       } else if (type !== 'KELUAR') {
         clearReservation(activeSKU);
@@ -1341,6 +1348,9 @@
       
       let requestUrl = webappUrl + (webappUrl.includes('?') ? '&' : '?');
       
+      const isPak = document.getElementById('satPak') && document.getElementById('satPak').checked;
+      const satPilihan = isPak ? 'pak' : 'satuan';
+
       if (type === 'KELUAR') {
         const tujuan = document.getElementById('tujuanKeluar').value;
         const divisi = document.getElementById('divisiTujuan').value.trim();
@@ -1353,7 +1363,12 @@
         
         // Validasi stok efektif sisi klien
         const currentEffective = getEffectiveStock(activeSKU, committedStock);
-        if (qtyInput > currentEffective) {
+        let finalQty = qtyInput;
+        if (isPak && scannedItem.konversi_pak) {
+          finalQty = Math.round(qtyInput * scannedItem.konversi_pak);
+        }
+
+        if (finalQty > currentEffective) {
           if (!confirm(`Stok tersedia hanya ${currentEffective} ${scannedItem.satuan_stok}. Tetap kirim? (Server mungkin akan menolak jika stok tidak mencukupi)`)) {
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = '<i class="bi bi-box-arrow-left me-1"></i> Kirim Pengeluaran';
@@ -1362,19 +1377,16 @@
         }
         
         requestUrl += `action=submit_pengeluaran&sku=${encodeURIComponent(activeSKU)}` +
-                     `&jumlah=${qtyInput}&tujuan=${encodeURIComponent(tujuan)}` +
+                     `&jumlah=${qtyInput}&satuan_pilihan=${satPilihan}&tujuan=${encodeURIComponent(tujuan)}` +
                      `&divisi_tujuan=${encodeURIComponent(divisi)}&catatan=${encodeURIComponent(note)}` +
                      `&role=${encodeURIComponent(op.role)}&username=${encodeURIComponent(op.username)}` +
                      `&fullName=${encodeURIComponent(op.name)}`;
       } else {
-        const isPak = document.getElementById('satPak') && document.getElementById('satPak').checked;
-        const satPilihan = isPak ? 'pak' : 'satuan';
-        const harga = Number(document.getElementById('hargaSatuan').value) || 0;
         const supp = document.getElementById('supplier').value.trim();
         
         requestUrl += `action=submit_pemasukan&sku=${encodeURIComponent(activeSKU)}` +
                      `&jumlah=${qtyInput}&satuan_pilihan=${satPilihan}` +
-                     `&harga_satuan=${harga}&supplier=${encodeURIComponent(supp)}` +
+                     `&supplier=${encodeURIComponent(supp)}` +
                      `&catatan=${encodeURIComponent(note)}` +
                      `&role=${encodeURIComponent(op.role)}&username=${encodeURIComponent(op.username)}` +
                      `&fullName=${encodeURIComponent(op.name)}`;
@@ -1401,11 +1413,12 @@
           
           // Kirim broadcast channel ke tab lokal lain
           if (syncChannel) {
+            const finalQty = (isPak && scannedItem.konversi_pak) ? Math.round(qtyInput * scannedItem.konversi_pak) : qtyInput;
             syncChannel.postMessage({
               action: 'refresh_stok',
               sku: activeSKU,
               type: type,
-              jumlah: qtyInput
+              jumlah: finalQty
             });
             logToDebug('Broadcast update terkirim ke tab lain.', 'success');
           }
