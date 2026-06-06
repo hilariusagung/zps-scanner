@@ -200,14 +200,16 @@
       border: 4px solid #fbbf24; /* Warna kuning khas scanner iOS */
       pointer-events: none;
       /* Membuat border hanya tampil di sudut-sudut saja */
-      mask: linear-gradient(to right, red 30px, transparent 30px) 0 0 / 100% 100%,
-            linear-gradient(to left, red 30px, transparent 30px) 100% 0 / 100% 100%,
-            linear-gradient(to bottom, red 30px, transparent 30px) 0 0 / 100% 100%,
-            linear-gradient(to top, red 30px, transparent 30px) 0 100% / 100% 100%;
-      -webkit-mask: linear-gradient(to right, red 30px, transparent 30px) 0 0,
-                    linear-gradient(to left, red 30px, transparent 30px) 100% 0,
-                    linear-gradient(to bottom, red 30px, transparent 30px) 0 0,
-                    linear-gradient(to top, red 30px, transparent 30px) 0 100%;
+      mask: 
+        linear-gradient(#000, #000) 0 0 / 30px 30px no-repeat,
+        linear-gradient(#000, #000) 100% 0 / 30px 30px no-repeat,
+        linear-gradient(#000, #000) 0 100% / 30px 30px no-repeat,
+        linear-gradient(#000, #000) 100% 100% / 30px 30px no-repeat;
+      -webkit-mask: 
+        linear-gradient(#000, #000) 0 0 / 30px 30px no-repeat,
+        linear-gradient(#000, #000) 100% 0 / 30px 30px no-repeat,
+        linear-gradient(#000, #000) 0 100% / 30px 30px no-repeat,
+        linear-gradient(#000, #000) 100% 100% / 30px 30px no-repeat;
     }
 
     /* Hide default UI from html5-qrcode */
@@ -510,136 +512,10 @@
       color: var(--text-primary);
     }
 
-    /* ── SETTINGS MODAL ── */
-    .settings-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.92);
-      backdrop-filter: blur(10px);
-      z-index: 60;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      padding: 20px;
-    }
-
-    .settings-overlay.visible {
-      display: flex;
-    }
-
-    .settings-card {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-      padding: 24px;
-      width: 100%;
-      max-width: 440px;
-      animation: slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(60px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .settings-title {
-      font-weight: 700;
-      font-size: 18px;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .settings-field label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 6px;
-    }
-
-    .settings-field input {
-      width: 100%;
-      padding: 12px 16px;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      color: var(--text-primary);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.2s ease;
-    }
-
-    .settings-field input:focus {
-      border-color: var(--accent-blue);
-    }
-
-    .settings-field input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .settings-hint {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 8px;
-      line-height: 1.5;
-    }
-
-    .settings-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .btn-save {
-      flex: 1;
-      padding: 12px;
-      background: var(--gradient-primary);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-family: 'Inter', sans-serif;
-      font-weight: 700;
-      font-size: 14px;
-      cursor: pointer;
-      transition: transform 0.15s ease;
-    }
-
-    .btn-save:hover {
-      transform: translateY(-1px);
-    }
-
-    .btn-save:active {
-      transform: scale(0.98);
-    }
-
-    .btn-cancel {
-      padding: 12px 20px;
-      background: transparent;
-      color: var(--text-secondary);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      font-family: 'Inter', sans-serif;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-cancel:hover {
-      background: var(--bg-card);
+    /* ── SPIN & TRANSITION HELPER ── */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     /* ── FOOTER ── */
@@ -712,9 +588,6 @@
     <button class="glass-btn" onclick="goBackToWebapp()" title="Kembali ke Aplikasi ZPS">
       <i class="bi bi-x-lg"></i>
     </button>
-    <button class="glass-btn" onclick="openSettings()" title="Pengaturan">
-      <i class="bi bi-gear"></i>
-    </button>
   </div>
 
   <!-- STATUS BAR (Floating, Transparan) -->
@@ -749,44 +622,66 @@
 
   <!-- RESULT OVERLAY -->
   <div class="result-overlay" id="resultOverlay">
-    <div class="result-card">
-      <div class="result-icon success">
-        <i class="bi bi-check-lg"></i>
+    <div class="result-card" style="max-width: 400px; width: 100%;">
+      <!-- Loading State -->
+      <div id="resultLoading">
+        <div class="result-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--accent-blue);">
+          <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; display: inline-block;"></i>
+        </div>
+        <div class="result-sku" id="loadingSKU">---</div>
+        <div class="result-message" style="margin-bottom: 0;">Mencari detail barang...</div>
       </div>
-      <div class="result-sku" id="resultSKU">---</div>
-      <div class="result-message">Barcode berhasil dipindai!</div>
-      <div class="result-redirect-bar">
-        <div class="fill" id="redirectFill"></div>
+
+      <!-- Success State -->
+      <div id="resultSuccess" class="hidden">
+        <div class="result-icon success">
+          <i class="bi bi-check-lg"></i>
+        </div>
+        <div class="result-sku" id="resultSKU">---</div>
+        <h3 id="resultNamaBarang" style="font-weight: 700; margin-bottom: 6px; color: var(--text-primary); font-size: 18px; word-break: break-word;">Nama Barang</h3>
+        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;">
+          <span class="badge" id="resultKategori" style="background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 4px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 600;">Kategori</span>
+          <span class="badge" id="resultStatus" style="padding: 4px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700;">Status</span>
+        </div>
+        
+        <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px; margin-bottom: 16px; text-align: left;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+            <span style="color: var(--text-secondary); font-size: 13px;">Stok Saat Ini:</span>
+            <span id="resultStok" style="font-weight: 700; color: var(--text-primary); font-size: 13px;">-</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding-top: 4px;">
+            <span style="color: var(--text-secondary); font-size: 13px;">Lokasi Rak:</span>
+            <span id="resultRak" style="font-weight: 700; color: var(--text-primary); font-size: 13px;">-</span>
+          </div>
+        </div>
+        
+        <button class="btn-redirect" onclick="redirectToWebapp()" style="width: 100%; justify-content: center; margin-top: 0; margin-bottom: 8px; padding: 12px;">
+          <i class="bi bi-box-arrow-up-right"></i> Buka Detail di Webapp
+        </button>
       </div>
-      <div class="result-redirect-text">Mengarahkan ke ZPS Webapp...</div>
-      <button class="btn-redirect" onclick="redirectNow()">
-        <i class="bi bi-box-arrow-up-right"></i> Buka Sekarang
-      </button>
-      <br>
-      <button class="btn-scan-again" onclick="scanAgain()">
-        <i class="bi bi-arrow-repeat"></i> Scan Lagi
-      </button>
+
+      <!-- Error State -->
+      <div id="resultError" class="hidden">
+        <div class="result-icon" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red);">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <div class="result-sku" id="errorSKU">---</div>
+        <div class="result-message" id="errorMessage" style="color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 16px;">Terjadi kesalahan.</div>
+      </div>
+
+      <!-- Action Footer -->
+      <div style="border-top: 1px solid var(--border-subtle); padding-top: 12px; margin-top: 12px; display: flex; gap: 8px; width: 100%;">
+        <button class="btn-scan-again" onclick="scanAgain()" style="flex: 2; margin-top: 0; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); padding: 10px;">
+          <i class="bi bi-arrow-repeat"></i> Scan Lagi
+        </button>
+        <button class="btn-scan-again" onclick="closeResult()" style="flex: 1; margin-top: 0; justify-content: center; padding: 10px;">
+          Tutup
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- SETTINGS OVERLAY -->
-  <div class="settings-overlay" id="settingsOverlay">
-    <div class="settings-card">
-      <div class="settings-title"><i class="bi bi-gear"></i> Pengaturan Scanner</div>
-      <div class="settings-field">
-        <label for="inputWebappUrl">URL Webapp ZPS</label>
-        <input type="url" id="inputWebappUrl" placeholder="https://script.google.com/macros/s/.../exec">
-        <div class="settings-hint">
-          <i class="bi bi-info-circle"></i> Masukkan URL deployment webapp Apps Script Anda.
-          URL ini digunakan untuk redirect setelah barcode berhasil dipindai.
-        </div>
-      </div>
-      <div class="settings-actions">
-        <button class="btn-cancel" onclick="closeSettings()">Batal</button>
-        <button class="btn-save" onclick="saveSettings()"><i class="bi bi-check-lg"></i> Simpan</button>
-      </div>
-    </div>
-  </div>
+  <!-- Settings modal removed -->
 
   <!-- FOOTER -->
   <footer class="app-footer" style="padding-bottom: 6px;">
@@ -948,7 +843,7 @@
       return base + separator + 'scan=' + encodeURIComponent(sku);
     }
 
-    // ── FIX #3: onScanSuccess sekarang async ──
+    // ── onScanSuccess dengan AJAX fetch ──
     async function onScanSuccess(decodedText) {
       // Debounce: cegah scan duplikat dalam 3 detik
       const now = Date.now();
@@ -968,60 +863,102 @@
       flash.classList.add('active');
       setTimeout(() => flash.classList.remove('active'), 600);
 
-      // FIX #3: await stopScanner agar scanner benar-benar berhenti
+      // Stop scanner saat memproses
       await stopScanner();
 
       const webappUrl = getWebappUrl();
       if (!webappUrl) {
-        showResult(sku, false);
+        showResultError(sku, '⚠️ URL Webapp belum terdaftar di memori. Harap buka aplikasi utama ZPS terlebih dahulu untuk sinkronisasi otomatis.');
         return;
       }
 
-      showResult(sku, true);
+      showResultLoading(sku);
 
-      redirectTimer = setTimeout(() => {
-        redirectNow();
-      }, 2000);
-    }
+      // Mulai fetch data barang
+      const separator = webappUrl.includes('?') ? '&' : '?';
+      const requestUrl = webappUrl + separator + 'scan=' + encodeURIComponent(sku);
 
-    // ── Show Result ──
-    function showResult(sku, hasUrl) {
-      document.getElementById('resultSKU').textContent = sku;
-      const overlay = document.getElementById('resultOverlay');
-      overlay.classList.add('visible');
-
-      const fill = document.getElementById('redirectFill');
-      fill.style.animation = 'none';
-      fill.offsetHeight;
-      fill.style.animation = '';
-
-      if (!hasUrl) {
-        document.querySelector('.result-redirect-bar').style.display = 'none';
-        document.querySelector('.result-redirect-text').textContent = '⚠️ URL Webapp belum diatur. Buka Pengaturan terlebih dahulu.';
-        document.querySelector('.btn-redirect').innerHTML = '<i class="bi bi-gear"></i> Buka Pengaturan';
-        document.querySelector('.btn-redirect').onclick = function () {
-          closeResult();
-          openSettings();
-        };
-      } else {
-        document.querySelector('.result-redirect-bar').style.display = '';
-        document.querySelector('.result-redirect-text').textContent = 'Mengarahkan ke ZPS Webapp...';
-        document.querySelector('.btn-redirect').innerHTML = '<i class="bi bi-box-arrow-up-right"></i> Buka Sekarang';
-        document.querySelector('.btn-redirect').onclick = redirectNow;
+      try {
+        logToDebug('Mengirim permintaan fetch ke: ' + requestUrl, 'info');
+        const response = await fetch(requestUrl);
+        const result = await response.json();
+        
+        if (result && result.success) {
+          showResultSuccess(result.data);
+        } else {
+          showResultError(sku, result.message || 'Barang tidak ditemukan di database.');
+        }
+      } catch (err) {
+        console.error('Fetch error:', err);
+        showResultError(sku, 'Gagal terhubung dengan server Google Apps Script. Pastikan koneksi internet aktif.');
       }
     }
 
-    // ── Redirect Now ──
-    function redirectNow() {
-      if (redirectTimer) clearTimeout(redirectTimer);
-      const url = buildRedirectUrl(detectedSKU);
-      if (url) window.location.href = url;
+    // ── Show Result States ──
+    function showResultLoading(sku) {
+      document.getElementById('loadingSKU').textContent = sku;
+      
+      document.getElementById('resultLoading').classList.remove('hidden');
+      document.getElementById('resultSuccess').classList.add('hidden');
+      document.getElementById('resultError').classList.add('hidden');
+      
+      document.getElementById('resultOverlay').classList.add('visible');
     }
 
-    // ── FIX #4: scanAgain sekarang async + await stop ──
+    // ── Show Result Success ──
+    function showResultSuccess(data) {
+      document.getElementById('resultSKU').textContent = data.sku;
+      document.getElementById('resultNamaBarang').textContent = data.nama_barang;
+      document.getElementById('resultKategori').textContent = data.kategori || '-';
+      document.getElementById('resultStok').innerHTML = `${data.sisa_stok} <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">${data.satuan_stok}</span>`;
+      document.getElementById('resultRak').textContent = data.lokasi_rak || '—';
+      
+      const statusBadge = document.getElementById('resultStatus');
+      statusBadge.textContent = data.status;
+      statusBadge.className = 'badge';
+      
+      if (data.status === 'Kosong') {
+        statusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+        statusBadge.style.color = 'var(--accent-red)';
+        statusBadge.style.border = '1px solid rgba(239, 68, 68, 0.2)';
+      } else if (data.status === 'Menipis') {
+        statusBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+        statusBadge.style.color = 'var(--accent-amber)';
+        statusBadge.style.border = '1px solid rgba(245, 158, 11, 0.2)';
+      } else {
+        statusBadge.style.background = 'rgba(34, 197, 94, 0.15)';
+        statusBadge.style.color = 'var(--accent-green)';
+        statusBadge.style.border = '1px solid rgba(34, 197, 94, 0.2)';
+      }
+
+      document.getElementById('resultLoading').classList.add('hidden');
+      document.getElementById('resultSuccess').classList.remove('hidden');
+      document.getElementById('resultError').classList.add('hidden');
+    }
+
+    function showResultError(sku, message) {
+      document.getElementById('errorSKU').textContent = sku;
+      document.getElementById('errorMessage').textContent = message;
+
+      document.getElementById('resultLoading').classList.add('hidden');
+      document.getElementById('resultSuccess').classList.add('hidden');
+      document.getElementById('resultError').classList.remove('hidden');
+      document.getElementById('resultOverlay').classList.add('visible');
+    }
+
+    // ── Redirect to Webapp ──
+    function redirectToWebapp() {
+      const baseUrl = getWebappUrl();
+      if (baseUrl) {
+        const separator = baseUrl.includes('?') ? '&' : '?';
+        const url = baseUrl + separator + 'scan=' + encodeURIComponent(detectedSKU);
+        window.open(url, '_blank');
+      }
+    }
+
+    // ── Scan Again ──
     async function scanAgain() {
-      if (redirectTimer) clearTimeout(redirectTimer);
-      await stopScanner(); // FIX #4: tunggu stop selesai sebelum start
+      await stopScanner();
       closeResult();
       startScanner();
     }
@@ -1039,27 +976,6 @@
       } else {
         try { window.close(); } catch (e) { alert('Silakan kembali ke aplikasi ZPS Anda.'); }
       }
-    }
-
-    // ── Settings ──
-    function openSettings() {
-      document.getElementById('inputWebappUrl').value = getWebappUrl();
-      document.getElementById('settingsOverlay').classList.add('visible');
-    }
-
-    function closeSettings() {
-      document.getElementById('settingsOverlay').classList.remove('visible');
-    }
-
-    function saveSettings() {
-      const url = document.getElementById('inputWebappUrl').value.trim();
-      if (url) {
-        localStorage.setItem(STORAGE_KEY_URL, url);
-      } else {
-        localStorage.removeItem(STORAGE_KEY_URL);
-      }
-      closeSettings();
-      setStatus('URL Webapp tersimpan ✓', 'scanning');
     }
 
     // ── Toggle Senter (Flashlight / Torch) ──
@@ -1098,7 +1014,7 @@
       }
     }
 
-    // ── FIX #1 + #2 + #5: startScanner dengan semua perbaikan ──
+    // ── startScanner dioptimalkan untuk QR-Code dan Kecepatan Maksimal ──
     async function startScanner() {
       if (isScanning) return;
 
@@ -1106,49 +1022,37 @@
       readerEl.innerHTML = '';
 
       try {
-        logToDebug('Inisialisasi Html5Qrcode dengan verbose:true...', 'info');
-        // PERBAIKAN UTAMA: formatsToSupport harus dimasukkan ke dalam constructor Html5Qrcode, bukan start()!
-        // verbose diset ke true agar log library masuk ke Debug Console kita.
-        // useBarCodeDetectorIfSupported diset ke true untuk mengaktifkan pemindaian native di HP Android (Chrome).
+        logToDebug('Inisialisasi Html5Qrcode untuk deteksi instan...', 'info');
+        // Hanya deteksi QR_CODE demi meminimalkan beban CPU dan mempercepat scan
         html5QrCode = new Html5Qrcode('reader', {
           verbose: true,
           useBarCodeDetectorIfSupported: true,
           formatsToSupport: [
-            Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.QR_CODE
           ]
         });
 
         const config = {
-          fps: 15,
-          disableFlip: true, // Menghemat CPU dengan mematikan pencerminan gambar cermin
+          fps: 30, // 30 FPS untuk kelancaran penangkapan frame
+          disableFlip: true, // Matikan mirror calculations
           
-          // Membatasi pemindaian hanya pada area kotak bidik tengah 250x250 piksel.
-          // Ini memotong 90% beban piksel gambar (dari 900rb piksel menjadi hanya 60rb piksel)
-          // sehingga decoding rate naik 10x lipat (sangat responsif & instan).
+          // Membatasi scan hanya pada kotak tengah 250x250
           qrbox: { width: 250, height: 250 },
           
-          // RESOLUSI & KONSTRUKSI: Pindahkan constraints resolusi ke parameter config.videoConstraints
-          // agar parameter pertama tetap memiliki tepat 1 key dan terhindar dari eror validasi.
+          // Meminta resolusi rendah ideal 640x480 agar dekode per frame secepat kilat
           videoConstraints: {
             facingMode: 'environment',
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
+            width: { min: 640, ideal: 640, max: 1280 },
+            height: { min: 480, ideal: 480, max: 720 }
           }
         };
 
-        logToDebug('Memulai streaming kamera (facingMode: environment)...', 'info');
-        // JAMINAN 1 KEY: Parameter pertama HANYA berisi facingMode untuk lolos validasi library.
+        logToDebug('Memulai streaming kamera (640x480 @ 30fps)...', 'info');
         await html5QrCode.start(
           { facingMode: 'environment' },
           config,
           onScanSuccess,
-          () => { } // abaikan scan failure (normal jika tidak ada kode di frame)
+          () => { } // abaikan scan failure biasa
         );
 
         isScanning = true;
