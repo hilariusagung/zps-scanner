@@ -18,6 +18,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>ZPS Scanner</title>
+  <link rel="icon" type="image/png" href="https://image2url.com/r2/default/images/1771949923404-fca1c122-8d02-4fd0-99e1-0e54f1c18c54.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -936,7 +937,7 @@
 
       const webappUrl = getWebappUrl();
       if (!webappUrl) {
-        showResultError(sku, '⚠️ URL Webapp belum terdaftar di memori. Harap buka aplikasi utama ZPS terlebih dahulu.');
+        showResultError(sku, 'URL Webapp belum terdaftar di memori. Harap buka aplikasi utama ZPS terlebih dahulu.');
         return;
       }
 
@@ -1029,7 +1030,7 @@
       transactionTypeSelect.innerHTML = '';
       
       if (!perms.canTambah && !perms.canKurang) {
-        showResultError(data.sku, '⚠️ Hak Akses Ditolak: Anda tidak memiliki izin untuk melakukan transaksi stok (Masuk maupun Keluar).');
+        showResultError(data.sku, 'Hak Akses Ditolak: Anda tidak memiliki izin untuk melakukan transaksi stok (Masuk maupun Keluar).');
         return;
       }
       
