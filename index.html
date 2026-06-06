@@ -1794,6 +1794,11 @@
           lastProcessedStokSignal = sig;
         });
 
+        if (activeSKU) {
+          logToDebug('Firebase initialized late, starting reservation listener for active SKU: ' + activeSKU, 'info');
+          listenToReservations(activeSKU, committedStock);
+        }
+
       } catch(e) {
         logToDebug('Error initFirebase: ' + e.message, 'error');
       }
@@ -1858,6 +1863,7 @@
       }
 
       // Bersihkan parameter query di url bar browser HP agar rapi
+      const scanParam = urlParams.get('scan');
       if (window.location.search) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
@@ -1876,7 +1882,12 @@
         }
       }
 
-      startScanner();
+      if (scanParam) {
+        logToDebug('Direct scan parameter detected: ' + scanParam, 'success');
+        onScanSuccess(scanParam);
+      } else {
+        startScanner();
+      }
     });
 
     // ── Pause/resume saat tab disembunyikan ──
