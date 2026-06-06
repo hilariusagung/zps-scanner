@@ -711,14 +711,23 @@
 
   <script>
     // ════════════════════════════════════════════════════════════
-    // ZPS SCANNER — Fixed Version
-    // Fixes: #1 konflik videoConstraints, #2 qrbox sempit,
-    //        #3 stopScanner tidak di-await, #4 scanAgain race condition,
-    //        #5 tidak ada formatsToSupport
+    // ZPS SCANNER v3.0 — Native BarcodeDetector Engine
+    // Arsitektur Dua Lapis:
+    //   UTAMA:   Native BarcodeDetector API (hardware-accelerated)
+    //   FALLBACK: html5-qrcode (konfigurasi diperbaiki)
     // ════════════════════════════════════════════════════════════
 
     const STORAGE_KEY_URL = 'zps_scanner_webapp_url';
+
+    // State html5-qrcode (mode fallback)
     let html5QrCode = null;
+
+    // State Native BarcodeDetector (mode utama)
+    let scanMode = 'none';          // 'native' | 'fallback' | 'none'
+    let nativeStream = null;        // MediaStream dari getUserMedia
+    let nativeRafId = null;         // requestAnimationFrame ID
+    let nativeDetector = null;      // BarcodeDetector instance
+    let nativeIsDetecting = false;  // flag agar detect() tidak tumpang-tindih
 
     // ── Log Interceptor untuk Debugging Mobile ──
     function logToDebug(msg, type = 'info') {
@@ -981,12 +990,19 @@
     // ── Toggle Senter (Flashlight / Torch) ──
     let isTorchOn = false;
     async function toggleTorch() {
-      if (!html5QrCode || !isScanning) {
+      if (!isScanning) {
         logToDebug('Kamera belum aktif. Senter tidak bisa dinyalakan.', 'warn');
         return;
       }
       try {
-        const track = typeof html5QrCode.getRunningTrack === 'function' ? html5QrCode.getRunningTrack() : null;
+        // Ambil track aktif dari mode yang sedang berjalan
+        let track = null;
+        if (scanMode === 'native' && nativeStream) {
+          track = nativeStream.getVideoTracks()[0] || null;
+        } else if (scanMode === 'fallback' && html5QrCode) {
+          track = typeof html5QrCode.getRunningTrack === 'function'
+            ? html5QrCode.getRunningTrack() : null;
+        }
         if (!track) {
           logToDebug('Gagal mengakses track video kamera.', 'error');
           return;
@@ -1014,126 +1030,261 @@
       }
     }
 
-    // ── startScanner dioptimalkan untuk QR-Code dan Kecepatan Maksimal ──
-    async function startScanner() {
-      if (isScanning) return;
+    // ════════════════════════════════════════════════════════════
+    // MESIN SCANNER UTAMA: Native BarcodeDetector API
+    // Bekerja di level hardware, tidak perlu library eksternal
+    // ════════════════════════════════════════════════════════════
+    async function startNativeScanner() {
+      scanMode = 'native';
+      logToDebug('Mode: Native BarcodeDetector API (hardware-accelerated)', 'success');
+
+      try {
+        // 1. Buat detector — hanya format QR_CODE agar paling ringan
+        nativeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+
+        // 2. Ambil stream kamera belakang dengan resolusi optimal untuk scanner
+        //    640x480: cukup resolusi untuk membaca QR, sangat ringan untuk CPU
+        nativeStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width:  { ideal: 640 },
+            height: { ideal: 480 }
+          },
+          audio: false
+        });
+
+        // 3. Hubungkan stream ke elemen video tersembunyi di dalam #reader
+        const readerEl = document.getElementById('reader');
+        readerEl.innerHTML = '';
+        const video = document.createElement('video');
+        video.setAttribute('playsinline', 'true'); // wajib untuk iOS
+        video.setAttribute('muted', 'true');
+        video.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;';
+        readerEl.appendChild(video);
+        video.srcObject = nativeStream;
+        await video.play();
+
+        isScanning = true;
+        setStatus('Kamera aktif — arahkan ke QR Code', 'scanning');
+        logToDebug('Stream kamera aktif. Memulai loop deteksi...', 'success');
+
+        // 4. Cek kemampuan hardware (Torch & Zoom) via MediaStreamTrack
+        setTimeout(async () => {
+          try {
+            const track = nativeStream.getVideoTracks()[0];
+            if (!track) return;
+            const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+            logToDebug('Camera Capabilities: ' + JSON.stringify(capabilities), 'info');
+
+            // Senter (Torch)
+            const btnTorch = document.getElementById('btnTorch');
+            if (btnTorch) {
+              if (capabilities.torch) {
+                btnTorch.style.display = 'flex';
+                logToDebug('Fitur Senter didukung oleh HP ini.', 'success');
+              } else {
+                btnTorch.style.display = 'none';
+                logToDebug('Fitur Senter TIDAK didukung oleh HP ini.', 'info');
+              }
+            }
+
+            // Auto-Zoom ringan untuk memperjelas QR jarak dekat
+            if (capabilities.zoom) {
+              const maxZoom = capabilities.zoom.max || 1;
+              const idealZoom = Math.min(1.5, maxZoom);
+              if (idealZoom > 1) {
+                await track.applyConstraints({ advanced: [{ zoom: idealZoom }] });
+                logToDebug('Auto-Zoom ' + idealZoom + 'x diterapkan.', 'info');
+              }
+            }
+          } catch (e) {
+            logToDebug('Gagal cek capabilities: ' + e.message, 'warn');
+          }
+        }, 800);
+
+        // 5. Loop deteksi — requestAnimationFrame agar selaras dengan refresh layar
+        function detectLoop() {
+          if (!isScanning || scanMode !== 'native') return;
+
+          // Guard: jangan panggil detect() jika frame sebelumnya belum selesai
+          if (nativeIsDetecting || video.readyState < 2) {
+            nativeRafId = requestAnimationFrame(detectLoop);
+            return;
+          }
+
+          nativeIsDetecting = true;
+          nativeDetector.detect(video)
+            .then(barcodes => {
+              nativeIsDetecting = false;
+              if (barcodes.length > 0 && isScanning) {
+                const rawValue = barcodes[0].rawValue;
+                logToDebug('QR terdeteksi (native): ' + rawValue, 'success');
+                onScanSuccess(rawValue);
+              } else {
+                nativeRafId = requestAnimationFrame(detectLoop);
+              }
+            })
+            .catch(() => {
+              nativeIsDetecting = false;
+              nativeRafId = requestAnimationFrame(detectLoop);
+            });
+        }
+
+        nativeRafId = requestAnimationFrame(detectLoop);
+
+      } catch (err) {
+        logToDebug('Native scanner error: ' + err.message + ' — Mencoba fallback...', 'warn');
+        isScanning = false;
+        scanMode = 'none';
+        // Jika native gagal (misal izin ditolak), lanjut ke fallback
+        await startFallbackScanner();
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // MESIN SCANNER CADANGAN: html5-qrcode (konfigurasi diperbaiki)
+    // Digunakan jika BarcodeDetector tidak tersedia (iOS Safari, HP lama)
+    // ════════════════════════════════════════════════════════════
+    async function startFallbackScanner() {
+      scanMode = 'fallback';
+      logToDebug('Mode: Fallback html5-qrcode (konfigurasi diperbaiki)', 'warn');
 
       const readerEl = document.getElementById('reader');
       readerEl.innerHTML = '';
 
       try {
-        logToDebug('Inisialisasi Html5Qrcode untuk deteksi instan...', 'info');
-        // Hanya deteksi QR_CODE demi meminimalkan beban CPU dan mempercepat scan
         html5QrCode = new Html5Qrcode('reader', {
-          verbose: true,
-          useBarCodeDetectorIfSupported: true,
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.QR_CODE
-          ]
+          verbose: false,
+          formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
         });
 
+        // KONFIGURASI BENAR:
+        // - facingMode HANYA di sini, TIDAK di argumen pertama start()
+        // - Resolusi 640x480: ringan, optimal untuk scanner
+        // - fps 10: optimal untuk akurasi deteksi (bukan visual smoothness)
+        // - disableFlip: false — biarkan library handle rotasi sendiri
         const config = {
-          fps: 30, // 30 FPS untuk kelancaran penangkapan frame
-          disableFlip: true, // Matikan mirror calculations
-          
-          // Membatasi scan hanya pada kotak tengah 250x250
-          qrbox: { width: 250, height: 250 },
-          
-          // Menggunakan resolusi HD ideal 1280x720 agar autofokus kamera utama berfungsi maksimal
+          fps: 10,
+          disableFlip: false,
+          qrbox: { width: 280, height: 280 },
           videoConstraints: {
-            facingMode: 'environment',
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
+            facingMode: { ideal: 'environment' },
+            width:  { ideal: 640 },
+            height: { ideal: 480 }
           }
         };
 
-        logToDebug('Memulai streaming kamera (1280x720 @ 30fps)...', 'info');
+        logToDebug('Memulai html5-qrcode fallback (640x480 @ 10fps)...', 'info');
+
+        // PERBAIKAN KRITIS: Argumen pertama start() adalah string deviceId atau
+        // object facingMode — JANGAN campurkan dengan videoConstraints di config
+        // Kita gunakan undefined agar library hanya memakai videoConstraints dari config
         await html5QrCode.start(
-          { facingMode: 'environment' },
-          config,
+          { facingMode: 'environment' }, // Hanya satu sumber facingMode
+          { fps: 10, disableFlip: false, qrbox: { width: 280, height: 280 } }, // config TANPA videoConstraints
           onScanSuccess,
-          () => { } // abaikan scan failure biasa
+          () => {} // abaikan error per-frame
         );
 
         isScanning = true;
-        setStatus('Kamera aktif — arahkan ke barcode', 'scanning');
-        logToDebug('Kamera berhasil diaktifkan dengan area scan 250x250!', 'success');
+        setStatus('Kamera aktif — arahkan ke QR Code', 'scanning');
+        logToDebug('Fallback scanner aktif.', 'success');
 
-        // Cek kemampuan hardware (Torch & Zoom) setelah streaming aktif
+        // Cek torch via html5-qrcode API
         setTimeout(async () => {
           try {
-            const track = typeof html5QrCode.getRunningTrack === 'function' ? html5QrCode.getRunningTrack() : null;
-            if (track) {
-              const capabilities = typeof track.getCapabilities === 'function' ? track.getCapabilities() : {};
-              logToDebug('Camera Capabilities: ' + JSON.stringify(capabilities), 'info');
-              
-              // 1. Deteksi Senter (Torch)
-              const btnTorch = document.getElementById('btnTorch');
-              if (btnTorch) {
-                if (capabilities.torch) {
-                  btnTorch.style.display = 'flex';
-                  logToDebug('Fitur Senter didukung oleh HP ini.', 'success');
-                } else {
-                  btnTorch.style.display = 'none';
-                  logToDebug('Fitur Senter TIDAK didukung oleh HP ini.', 'info');
-                }
-              }
-
-              // 2. Deteksi & Set Zoom Otomatis (Mencegah lensa buram jarak dekat)
-              if (capabilities.zoom) {
-                const minZoom = capabilities.zoom.min || 1;
-                const maxZoom = capabilities.zoom.max || 1;
-                const idealZoom = Math.min(1.8, maxZoom);
-                
-                if (idealZoom > minZoom) {
-                  logToDebug('Menerapkan Auto-Zoom Digital: ' + idealZoom + 'x (Mencegah buram)', 'info');
-                  await track.applyConstraints({
-                    advanced: [{ zoom: idealZoom }]
-                  });
-                  logToDebug('Auto-Zoom berhasil diterapkan.', 'success');
-                }
-              }
+            const track = typeof html5QrCode.getRunningTrack === 'function'
+              ? html5QrCode.getRunningTrack() : null;
+            if (!track) return;
+            const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+            const btnTorch = document.getElementById('btnTorch');
+            if (btnTorch && capabilities.torch) {
+              btnTorch.style.display = 'flex';
+              logToDebug('Fitur Senter tersedia (fallback mode).', 'success');
             }
-          } catch (e) {
-            logToDebug('Gagal memproses kemampuan kamera: ' + e.message, 'warn');
-          }
-        }, 1000);
+          } catch(e) { /* silent */ }
+        }, 1200);
 
       } catch (err) {
-        console.error('Camera error:', err);
+        console.error('Fallback scanner error:', err);
         isScanning = false;
+        scanMode = 'none';
 
-        if (err.toString().includes('NotAllowedError') || err.toString().includes('Permission')) {
-          setStatus('Izin kamera ditolak', 'error');
-          document.getElementById('reader').innerHTML = `
-            <div class="no-camera">
-              <div class="no-camera-icon"><i class="bi bi-camera-video-off"></i></div>
-              <h3>Izin Kamera Diperlukan</h3>
-              <p>Aktifkan izin kamera di pengaturan browser Anda, lalu muat ulang halaman ini.</p>
+        const isPermissionError = err.toString().includes('NotAllowed') ||
+                                  err.toString().includes('Permission');
+        setStatus(isPermissionError ? 'Izin kamera ditolak' : 'Gagal membuka kamera', 'error');
+        document.getElementById('reader').innerHTML = `
+          <div class="no-camera">
+            <div class="no-camera-icon">
+              <i class="bi bi-${isPermissionError ? 'camera-video-off' : 'exclamation-triangle'}"></i>
             </div>
-          `;
-        } else {
-          setStatus('Gagal membuka kamera: ' + err.message, 'error');
-          document.getElementById('reader').innerHTML = `
-            <div class="no-camera">
-              <div class="no-camera-icon"><i class="bi bi-exclamation-triangle"></i></div>
-              <h3>Kamera Tidak Tersedia</h3>
-              <p>Pastikan perangkat memiliki kamera dan tidak digunakan oleh aplikasi lain.</p>
-            </div>
-          `;
-        }
+            <h3>${isPermissionError ? 'Izin Kamera Diperlukan' : 'Kamera Tidak Tersedia'}</h3>
+            <p>${isPermissionError
+              ? 'Aktifkan izin kamera di pengaturan browser Anda, lalu muat ulang halaman ini.'
+              : 'Pastikan perangkat memiliki kamera dan tidak digunakan oleh aplikasi lain.'}</p>
+          </div>
+        `;
       }
     }
 
-    // ── Stop Scanner ──
+    // ════════════════════════════════════════════════════════════
+    // ENTRY POINT: Pilih mesin yang tepat secara otomatis
+    // ════════════════════════════════════════════════════════════
+    async function startScanner() {
+      if (isScanning) return;
+
+      const hasNativeAPI = typeof BarcodeDetector !== 'undefined';
+      logToDebug('BarcodeDetector Native API tersedia: ' + hasNativeAPI, hasNativeAPI ? 'success' : 'warn');
+
+      if (hasNativeAPI) {
+        // Verifikasi apakah format QR_CODE didukung
+        try {
+          const supported = await BarcodeDetector.getSupportedFormats();
+          if (supported.includes('qr_code')) {
+            logToDebug('Format QR_CODE didukung native. Memulai mode cepat...', 'success');
+            await startNativeScanner();
+          } else {
+            logToDebug('QR_CODE tidak ada di daftar format native. Fallback...', 'warn');
+            await startFallbackScanner();
+          }
+        } catch(e) {
+          logToDebug('Gagal cek format native: ' + e.message + '. Fallback...', 'warn');
+          await startFallbackScanner();
+        }
+      } else {
+        await startFallbackScanner();
+      }
+    }
+
+    // ── Stop Scanner — menangani kedua mode ──
     async function stopScanner() {
-      if (html5QrCode && isScanning) {
+      if (!isScanning) return;
+
+      if (scanMode === 'native') {
+        // Hentikan loop deteksi
+        if (nativeRafId) {
+          cancelAnimationFrame(nativeRafId);
+          nativeRafId = null;
+        }
+        // Hentikan semua track kamera
+        if (nativeStream) {
+          nativeStream.getTracks().forEach(t => t.stop());
+          nativeStream = null;
+        }
+        nativeIsDetecting = false;
+        nativeDetector = null;
+
+      } else if (scanMode === 'fallback' && html5QrCode) {
         try {
           await html5QrCode.stop();
-        } catch (e) { /* ok jika sudah berhenti */ }
-        isScanning = false;
+        } catch (e) { /* sudah berhenti */ }
+        html5QrCode = null;
       }
-      // Reset status senter (torch)
+
+      isScanning = false;
+      scanMode = 'none';
+
+      // Reset tombol senter
       isTorchOn = false;
       const btn = document.getElementById('btnTorch');
       if (btn) {
@@ -1144,7 +1295,7 @@
 
     // ── Initialize ──
     document.addEventListener('DOMContentLoaded', function () {
-      logToDebug('Scanner App v2.7 (Full-Frame HD Engine) initialized', 'success');
+      logToDebug('Scanner App v3.0 (Native BarcodeDetector Engine) initialized', 'success');
       logToDebug('Browser UA: ' + navigator.userAgent, 'info');
       logToDebug('Viewport: ' + window.innerWidth + 'x' + window.innerHeight, 'info');
       logToDebug('Protokol: ' + window.location.protocol, 'info');
