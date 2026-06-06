@@ -19,6 +19,9 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- jsQR: Universal QR decoder, bekerja di semua browser termasuk iPhone Safari -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <!-- Firebase SDK untuk Realtime DB Integration -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <style>
     :root {
@@ -49,18 +52,6 @@
       box-sizing: border-box;
     }
 
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      overflow-x: hidden;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    /* ── iOS STYLE SCANNER UI ── */
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #000;
@@ -161,7 +152,6 @@
     }
 
     #reader,
-    #reader__scan_region,
     #reader video {
       position: absolute !important;
       inset: 0 !important;
@@ -188,8 +178,8 @@
       width: 250px;
       height: 250px;
       border-radius: 36px;
-      box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.72); /* Gelap transparan melingkari lubang */
-      border: 2px solid rgba(255, 255, 255, 0.35); /* Garis batas tipis */
+      box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.72);
+      border: 2px solid rgba(255, 255, 255, 0.35);
       pointer-events: none;
     }
 
@@ -199,9 +189,8 @@
       position: absolute;
       inset: -4px;
       border-radius: 40px;
-      border: 4px solid #fbbf24; /* Warna kuning khas scanner iOS */
+      border: 4px solid #fbbf24;
       pointer-events: none;
-      /* Membuat border hanya tampil di sudut-sudut saja */
       mask: 
         linear-gradient(#000, #000) 0 0 / 30px 30px no-repeat,
         linear-gradient(#000, #000) 100% 0 / 30px 30px no-repeat,
@@ -212,35 +201,6 @@
         linear-gradient(#000, #000) 100% 0 / 30px 30px no-repeat,
         linear-gradient(#000, #000) 0 100% / 30px 30px no-repeat,
         linear-gradient(#000, #000) 100% 100% / 30px 30px no-repeat;
-    }
-
-    /* Hide default UI from html5-qrcode */
-    #reader__scan_region {
-      border: none !important;
-    }
-
-    #reader__dashboard {
-      display: none !important;
-    }
-
-    #reader__header_message {
-      display: none !important;
-    }
-
-    #reader img[alt="Info icon"] {
-      display: none !important;
-    }
-
-    #reader__dashboard_section_swaplink {
-      display: none !important;
-    }
-
-    #reader__status_span {
-      display: none !important;
-    }
-
-    #reader canvas {
-      display: none !important;
     }
 
     .scan-line {
@@ -274,7 +234,7 @@
     /* ── SCANNER HINT ── */
     .scanner-hint {
       position: absolute;
-      top: calc(45% + 150px); /* Tepat di bawah cutout */
+      top: calc(45% + 150px);
       left: 20px;
       right: 20px;
       text-align: center;
@@ -310,7 +270,7 @@
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.15);
       color: #fff;
-      display: none; /* muncul jika didukung */
+      display: none;
       align-items: center;
       justify-content: center;
       font-size: 26px;
@@ -344,13 +304,12 @@
       0% {
         opacity: 1;
       }
-
       100% {
         opacity: 0;
       }
     }
 
-    /* ── RESULT CARD ── */
+    /* ── RESULT CARD & FORM ── */
     .result-overlay {
       position: fixed;
       inset: 0;
@@ -362,6 +321,7 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
+      overflow-y: auto;
       animation: fadeIn 0.3s ease;
     }
 
@@ -374,7 +334,6 @@
         opacity: 0;
         transform: translateY(20px);
       }
-
       to {
         opacity: 1;
         transform: translateY(0);
@@ -385,10 +344,11 @@
       background: var(--bg-secondary);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-xl);
-      padding: 32px;
+      padding: 24px;
       text-align: center;
-      max-width: 360px;
+      max-width: 400px;
       width: 100%;
+      margin: auto 0;
       animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
@@ -397,7 +357,6 @@
         opacity: 0;
         transform: scale(0.85);
       }
-
       to {
         opacity: 1;
         transform: scale(1);
@@ -433,37 +392,6 @@
       font-size: 14px;
       color: var(--text-secondary);
       margin-bottom: 24px;
-    }
-
-    .result-redirect-bar {
-      height: 4px;
-      background: var(--bg-card);
-      border-radius: var(--radius-pill);
-      overflow: hidden;
-      margin-bottom: 16px;
-    }
-
-    .result-redirect-bar .fill {
-      height: 100%;
-      background: var(--gradient-success);
-      border-radius: var(--radius-pill);
-      animation: progress-fill 2s linear forwards;
-    }
-
-    @keyframes progress-fill {
-      from {
-        width: 0%;
-      }
-
-      to {
-        width: 100%;
-      }
-    }
-
-    .result-redirect-text {
-      font-size: 12px;
-      color: var(--text-muted);
-      font-weight: 500;
     }
 
     .btn-redirect {
@@ -514,7 +442,6 @@
       color: var(--text-primary);
     }
 
-    /* ── SPIN & TRANSITION HELPER ── */
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
@@ -564,19 +491,6 @@
 
     .hidden {
       display: none !important;
-    }
-
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: var(--text-muted);
-      border-radius: 3px;
     }
   </style>
 </head>
@@ -636,29 +550,131 @@
 
       <!-- Success State -->
       <div id="resultSuccess" class="hidden">
-        <div class="result-icon success">
+        <div class="result-icon success" style="margin-bottom: 8px; width: 56px; height: 56px; font-size: 28px;">
           <i class="bi bi-check-lg"></i>
         </div>
-        <div class="result-sku" id="resultSKU">---</div>
-        <h3 id="resultNamaBarang" style="font-weight: 700; margin-bottom: 6px; color: var(--text-primary); font-size: 18px; word-break: break-word;">Nama Barang</h3>
-        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;">
-          <span class="badge" id="resultKategori" style="background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 4px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 600;">Kategori</span>
-          <span class="badge" id="resultStatus" style="padding: 4px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700;">Status</span>
+        <div class="result-sku" id="resultSKU" style="font-size: 20px; margin-bottom: 4px;">---</div>
+        <h3 id="resultNamaBarang" style="font-weight: 700; margin-bottom: 6px; color: var(--text-primary); font-size: 15px; word-break: break-word;">Nama Barang</h3>
+        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 12px;">
+          <span class="badge" id="resultKategori" style="background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 4px 10px; border-radius: var(--radius-pill); font-size: 10px; font-weight: 600;">Kategori</span>
+          <span class="badge" id="resultStatus" style="padding: 4px 10px; border-radius: var(--radius-pill); font-size: 10px; font-weight: 700;">Status</span>
         </div>
         
-        <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px; margin-bottom: 16px; text-align: left;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
-            <span style="color: var(--text-secondary); font-size: 13px;">Stok Saat Ini:</span>
-            <span id="resultStok" style="font-weight: 700; color: var(--text-primary); font-size: 13px;">-</span>
+        <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
+            <span style="color: var(--text-secondary); font-size: 12px;">Stok Tersedia (Live):</span>
+            <span id="resultStok" style="font-weight: 700; color: var(--text-primary); font-size: 12px;">-</span>
           </div>
-          <div style="display: flex; justify-content: space-between; padding-top: 4px;">
-            <span style="color: var(--text-secondary); font-size: 13px;">Lokasi Rak:</span>
-            <span id="resultRak" style="font-weight: 700; color: var(--text-primary); font-size: 13px;">-</span>
+          <div style="display: flex; justify-content: space-between; padding-top: 2px;">
+            <span style="color: var(--text-secondary); font-size: 12px;">Lokasi Rak:</span>
+            <span id="resultRak" style="font-weight: 700; color: var(--text-primary); font-size: 12px;">-</span>
+          </div>
+        </div>
+
+        <!-- Form Transaksi Stok -->
+        <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px; margin-bottom: 12px; text-align: left;">
+          <h4 style="font-size: 12px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
+            <i class="bi bi-arrow-left-right me-1"></i> Input Transaksi Stok
+          </h4>
+          
+          <!-- Dropdown Jenis Transaksi -->
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px;">Jenis Transaksi</label>
+            <select id="transactionType" onchange="toggleTransactionFields()" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 12px; font-weight: 600;">
+              <option value="KELUAR" selected>Keluar (Stok Berkurang)</option>
+              <option value="MASUK">Masuk (Stok Bertambah)</option>
+            </select>
+          </div>
+          
+          <!-- Input Jumlah -->
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px;">Jumlah</label>
+            <input type="number" id="inputQty" min="1" step="1" placeholder="Masukkan jumlah" oninput="updateSoftReservationFirebase()" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 13px; font-weight: 700;">
+            <!-- Warning Qty -->
+            <div id="qtyWarning" style="color: var(--accent-red); font-size: 10px; margin-top: 4px; display: none; font-weight: 600;"></div>
+          </div>
+          
+          <!-- Bagian Transaksi Keluar (Pengeluaran) -->
+          <div id="sectionKeluar">
+            <!-- Dropdown Tujuan Pengeluaran -->
+            <div style="margin-bottom: 10px;">
+              <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px;">Tujuan</label>
+              <select id="tujuanKeluar" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 12px;">
+                <option value="Produksi" selected>Produksi</option>
+                <option value="Rusak/Cacat">Rusak/Cacat</option>
+                <option value="Retur">Retur</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+            </div>
+            
+            <!-- Input Divisi Tujuan -->
+            <div style="margin-bottom: 10px;">
+              <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px;">Divisi Tujuan (Penerima)</label>
+              <input type="text" id="divisiTujuan" placeholder="Contoh: Cutting, Printing" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 12px;">
+            </div>
+          </div>
+          
+          <!-- Bagian Transaksi Masuk (Pemasukan) -->
+          <div id="sectionMasuk" style="display: none;">
+            <!-- Toggle Satuan (jika ada pak) -->
+            <div id="toggleSatuanWrap" style="margin-bottom: 10px; display: none;">
+              <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px;">Pilihan Satuan</label>
+              <div style="display: flex; gap: 8px;">
+                <label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; cursor: pointer; font-size: 11px; color: var(--text-primary);">
+                  <input type="radio" name="satuanPilihan" value="satuan" id="satDasar" checked onchange="updatePemasukanPreviewScanner()">
+                  <span id="lblDasar">Satuan</span>
+                </label>
+                <label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; cursor: pointer; font-size: 11px; color: var(--text-primary);">
+                  <input type="radio" name="satuanPilihan" value="pak" id="satPak" onchange="updatePemasukanPreviewScanner()">
+                  <span id="lblPak">Pak</span>
+                </label>
+              </div>
+              <div id="qtyInPreview" style="color: var(--accent-green); font-size: 10px; margin-top: 4px; display: none; font-weight: 600;"></div>
+            </div>
+            
+            <!-- Harga Satuan (opsional) -->
+            <div style="margin-bottom: 10px;">
+              <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px;">Harga Satuan (Rp, Opsional)</label>
+              <input type="number" id="hargaSatuan" placeholder="Contoh: 15000" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 12px;">
+            </div>
+            
+            <!-- Supplier (opsional) -->
+            <div style="margin-bottom: 10px;">
+              <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px;">Supplier (Opsional)</label>
+              <input type="text" id="supplier" placeholder="Nama Supplier" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 12px;">
+            </div>
+          </div>
+          
+          <!-- Catatan (opsional) -->
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px;">Catatan / Keterangan</label>
+            <input type="text" id="catatan" placeholder="Catatan transaksi..." style="width: 100%; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 12px;">
+          </div>
+          
+          <!-- Informasi Operator -->
+          <div style="font-size: 11px; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>Operator: <strong id="operatorInfo" style="color: var(--text-secondary);">-</strong></span>
+            <button type="button" onclick="showOperatorSetup()" style="background: transparent; border: none; color: var(--accent-blue); font-size: 11px; cursor: pointer; text-decoration: underline;">Ubah</button>
+          </div>
+          
+          <!-- Form Setup Operator Kecil (Hidden by default) -->
+          <div id="operatorSetup" style="display: none; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 8px;">
+            <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+              <input type="text" id="setupOperatorName" placeholder="Nama Operator" style="flex: 2; padding: 6px 10px; border-radius: 6px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 11px;">
+              <select id="setupOperatorRole" style="flex: 1.5; padding: 6px 10px; border-radius: 6px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 11px;">
+                <option value="Karyawan" selected>Karyawan</option>
+                <option value="Owner">Owner</option>
+                <option value="Kepala_Produksi">Kepala_Produksi</option>
+                <option value="Admin">Admin</option>
+              </select>
+              <button type="button" onclick="saveOperatorSetup()" style="flex: 1; padding: 6px; background: var(--accent-blue); color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 600;">Simpan</button>
+            </div>
           </div>
         </div>
         
-        <button class="btn-redirect" onclick="redirectToWebapp()" style="width: 100%; justify-content: center; margin-top: 0; margin-bottom: 8px; padding: 12px;">
-          <i class="bi bi-box-arrow-up-right"></i> Buka Detail di Webapp
+        <!-- Action Button Submit -->
+        <button id="btnSubmitTransaction" class="btn-redirect" onclick="submitTransaction()" style="width: 100%; justify-content: center; margin-top: 0; margin-bottom: 8px; padding: 12px; font-weight: 700; background: var(--gradient-primary);">
+          <i class="bi bi-send-fill me-1"></i> Proses Transaksi
         </button>
       </div>
 
@@ -683,11 +699,9 @@
     </div>
   </div>
 
-  <!-- Settings modal removed -->
-
   <!-- FOOTER -->
   <footer class="app-footer" style="padding-bottom: 6px;">
-    ZPS Inventory Scanner &bull; v2.7 (Full-Frame & HD Engine) &bull; Powered by html5-qrcode
+    ZPS Inventory Scanner &bull; v3.2 (AJAX & Realtime Sync Engine)
   </footer>
 
   <!-- DEBUG PANEL TOGGLE BUTTON -->
@@ -713,7 +727,7 @@
 
   <script>
     // ════════════════════════════════════════════════════════════
-    // ZPS SCANNER v3.1 — Universal Engine
+    // ZPS SCANNER v3.2 — Universal Engine (AJAX + Realtime Firebase)
     // Arsitektur:
     //   NATIVE:  BarcodeDetector API (Android Chrome 83+, hardware)
     //   JSQR:    getUserMedia + jsQR canvas (iPhone Safari & semua lainnya)
@@ -723,10 +737,25 @@
 
     // ── State Unified Scanner ──
     let scanMode       = 'none';  // 'native' | 'jsqr' | 'none'
-    let cameraStream   = null;    // MediaStream (shared oleh kedua mode)
+    let cameraStream   = null;    // MediaStream (shared)
     let cameraVideo    = null;    // HTMLVideoElement (shared)
-    let scanLoopId     = null;    // RAF id (native) atau interval id (jsqr)
-    let isDetecting    = false;   // Guard agar detect() tidak tumpang-tindih (native mode)
+    let scanLoopId     = null;    // RAF id atau interval id
+    let isDetecting    = false;   // Guard
+    let isScanning     = false;
+    let lastScannedCode = '';
+    let lastScanTime   = 0;
+    let detectedSKU    = '';
+    let redirectTimer  = null;
+
+    // State Tambahan untuk Transaksi & Realtime Firebase
+    let activeSKU = null;
+    let committedStock = 0;
+    let scannedItem = null;
+    let firebaseInitialized = false;
+    let firebaseListenerRef = null;
+    let reservationDebounceTimer = null;
+    const stockSessionId = 'sess_scan_' + Math.random().toString(36).substring(2, 15);
+    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('zps_inventory_sync') : null;
 
     // ── Log Interceptor untuk Debugging Mobile ──
     function logToDebug(msg, type = 'info') {
@@ -734,7 +763,7 @@
       if (!container) return;
       const p = document.createElement('div');
       const time = new Date().toLocaleTimeString();
-      let color = '#38bdf8'; // info (cyan)
+      let color = '#38bdf8'; // info
       if (type === 'error') color = '#f87171'; // red
       else if (type === 'warn') color = '#fbbf24'; // yellow
       else if (type === 'success') color = '#4ade80'; // green
@@ -784,11 +813,6 @@
       if (container) container.innerHTML = '';
       logToDebug('Log dibersihkan.', 'success');
     }
-    let isScanning = false;
-    let lastScannedCode = '';
-    let lastScanTime = 0;
-    let detectedSKU = '';
-    let redirectTimer = null;
 
     // ── Audio beep ──
     function playBeep() {
@@ -823,7 +847,7 @@
       else if (type === 'scanning') dot.classList.add('scanning');
     }
 
-    // ── Extract SKU from scanned text ──
+    // ── Extract SKU dari raw scanned text ──
     function extractSKU(raw) {
       if (raw.includes('scan=')) {
         try {
@@ -843,17 +867,8 @@
       return localStorage.getItem(STORAGE_KEY_URL) || '';
     }
 
-    // ── Build redirect URL ──
-    function buildRedirectUrl(sku) {
-      const base = getWebappUrl();
-      if (!base) return '';
-      const separator = base.includes('?') ? '&' : '?';
-      return base + separator + 'scan=' + encodeURIComponent(sku);
-    }
-
     // ── onScanSuccess dengan AJAX fetch ──
     async function onScanSuccess(decodedText) {
-      // Debounce: cegah scan duplikat dalam 3 detik
       const now = Date.now();
       if (decodedText === lastScannedCode && (now - lastScanTime) < 3000) return;
       lastScannedCode = decodedText;
@@ -871,18 +886,16 @@
       flash.classList.add('active');
       setTimeout(() => flash.classList.remove('active'), 600);
 
-      // Stop scanner saat memproses
       await stopScanner();
 
       const webappUrl = getWebappUrl();
       if (!webappUrl) {
-        showResultError(sku, '⚠️ URL Webapp belum terdaftar di memori. Harap buka aplikasi utama ZPS terlebih dahulu untuk sinkronisasi otomatis.');
+        showResultError(sku, '⚠️ URL Webapp belum terdaftar di memori. Harap buka aplikasi utama ZPS terlebih dahulu.');
         return;
       }
 
       showResultLoading(sku);
 
-      // Mulai fetch data barang
       const separator = webappUrl.includes('?') ? '&' : '?';
       const requestUrl = webappUrl + separator + 'action=get_scan_detail&sku=' + encodeURIComponent(sku);
 
@@ -893,14 +906,13 @@
           redirect: 'follow'
         });
         const text = await response.text();
-        logToDebug('Response status: ' + response.status + ', length: ' + text.length, 'info');
+        logToDebug('Response length: ' + text.length, 'info');
         let result;
         try {
           result = JSON.parse(text);
         } catch(parseErr) {
-          // Server tidak mengembalikan JSON — kemungkinan redirect ke halaman login
           logToDebug('Response bukan JSON: ' + text.substring(0, 100), 'error');
-          showResultError(sku, 'Server mengembalikan respons tidak valid. Pastikan Apps Script sudah di-redeploy dan deployment diset ke "Anyone" (bukan "Anyone with Google Account").');
+          showResultError(sku, 'Server mengembalikan respons tidak valid. Pastikan Apps Script Web App sudah di-redeploy.');
           return;
         }
         
@@ -912,51 +924,60 @@
       } catch (err) {
         console.error('Fetch error:', err.name, err.message);
         logToDebug('Fetch error detail: ' + err.name + ' - ' + err.message, 'error');
-        
-        if (err.name === 'TypeError' && err.message.includes('fetch')) {
-          showResultError(sku, '❌ CORS Error: Browser memblokir koneksi ke Apps Script. Pastikan: 1) Deployment diset ke "Anyone", 2) URL benar dan belum kadaluarsa, 3) Koneksi internet aktif.');
-        } else {
-          showResultError(sku, 'Gagal terhubung: ' + err.message + '. Pastikan koneksi internet aktif dan URL Apps Script benar.');
-        }
+        showResultError(sku, 'Gagal terhubung ke Google Apps Script: ' + err.message + '. Pastikan koneksi internet aktif.');
       }
     }
 
     // ── Show Result States ──
     function showResultLoading(sku) {
       document.getElementById('loadingSKU').textContent = sku;
-      
       document.getElementById('resultLoading').classList.remove('hidden');
       document.getElementById('resultSuccess').classList.add('hidden');
       document.getElementById('resultError').classList.add('hidden');
-      
       document.getElementById('resultOverlay').classList.add('visible');
     }
 
     // ── Show Result Success ──
     function showResultSuccess(data) {
+      scannedItem = data;
+      activeSKU = data.sku;
+      committedStock = data.sisa_stok;
+      
       document.getElementById('resultSKU').textContent = data.sku;
       document.getElementById('resultNamaBarang').textContent = data.nama_barang;
       document.getElementById('resultKategori').textContent = data.kategori || '-';
-      document.getElementById('resultStok').innerHTML = `${data.sisa_stok} <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">${data.satuan_stok}</span>`;
       document.getElementById('resultRak').textContent = data.lokasi_rak || '—';
       
-      const statusBadge = document.getElementById('resultStatus');
-      statusBadge.textContent = data.status;
-      statusBadge.className = 'badge';
-      
-      if (data.status === 'Kosong') {
-        statusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
-        statusBadge.style.color = 'var(--accent-red)';
-        statusBadge.style.border = '1px solid rgba(239, 68, 68, 0.2)';
-      } else if (data.status === 'Menipis') {
-        statusBadge.style.background = 'rgba(245, 158, 11, 0.15)';
-        statusBadge.style.color = 'var(--accent-amber)';
-        statusBadge.style.border = '1px solid rgba(245, 158, 11, 0.2)';
+      // Update sisa stok awal
+      updateDisplayedStock(data.sisa_stok);
+
+      // Konfigurasi Pemasukan Satuan/Pak
+      const toggleSatWrap = document.getElementById('toggleSatuanWrap');
+      if (data.konversi_pak) {
+        toggleSatWrap.style.display = 'block';
+        document.getElementById('lblDasar').textContent = data.satuan_stok.toUpperCase();
+        document.getElementById('lblPak').textContent = 'PAK'; // default
+        document.getElementById('satDasar').checked = true;
       } else {
-        statusBadge.style.background = 'rgba(34, 197, 94, 0.15)';
-        statusBadge.style.color = 'var(--accent-green)';
-        statusBadge.style.border = '1px solid rgba(34, 197, 94, 0.2)';
+        toggleSatWrap.style.display = 'none';
       }
+      
+      // Reset input form
+      document.getElementById('transactionType').value = 'KELUAR';
+      document.getElementById('inputQty').value = '';
+      document.getElementById('qtyWarning').style.display = 'none';
+      document.getElementById('qtyInPreview').style.display = 'none';
+      document.getElementById('catatan').value = '';
+      document.getElementById('hargaSatuan').value = '';
+      document.getElementById('supplier').value = '';
+      document.getElementById('divisiTujuan').value = '';
+      document.getElementById('tujuanKeluar').value = 'Produksi';
+      
+      toggleTransactionFields();
+      showOperatorInfo();
+
+      // Aktifkan Firebase Realtime listener untuk SKU ini
+      listenToReservations(data.sku, data.sisa_stok);
 
       document.getElementById('resultLoading').classList.add('hidden');
       document.getElementById('resultSuccess').classList.remove('hidden');
@@ -973,18 +994,341 @@
       document.getElementById('resultOverlay').classList.add('visible');
     }
 
-    // ── Redirect to Webapp ──
-    function redirectToWebapp() {
-      const baseUrl = getWebappUrl();
-      if (baseUrl) {
-        const separator = baseUrl.includes('?') ? '&' : '?';
-        const url = baseUrl + separator + 'scan=' + encodeURIComponent(detectedSKU);
-        window.open(url, '_blank');
+    // ── Logika Update Stok Efektif & Sinyal Realtime ──
+    function updateDisplayedStock(qty) {
+      if (!scannedItem) return;
+      const unit = scannedItem.satuan_stok;
+      const stokEl = document.getElementById('resultStok');
+      stokEl.innerHTML = `${qty} <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">${unit}</span>`;
+      
+      // Update status badge secara dinamis berdasarkan stok efektif
+      const statusBadge = document.getElementById('resultStatus');
+      let status = "Aman";
+      if (qty <= 0) {
+        status = "Kosong";
+      } else if (scannedItem.stok_minimal > 0 && qty <= scannedItem.stok_minimal) {
+        status = "Menipis";
+      }
+      
+      statusBadge.textContent = status;
+      statusBadge.className = 'badge';
+      
+      if (status === 'Kosong') {
+        statusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+        statusBadge.style.color = 'var(--accent-red)';
+        statusBadge.style.border = '1px solid rgba(239, 68, 68, 0.2)';
+      } else if (status === 'Menipis') {
+        statusBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+        statusBadge.style.color = 'var(--accent-amber)';
+        statusBadge.style.border = '1px solid rgba(245, 158, 11, 0.2)';
+      } else {
+        statusBadge.style.background = 'rgba(34, 197, 94, 0.15)';
+        statusBadge.style.color = 'var(--accent-green)';
+        statusBadge.style.border = '1px solid rgba(34, 197, 94, 0.2)';
+      }
+    }
+
+    function getEffectiveStock(sku, committedStockVal) {
+      const reservations = (window.firebaseReservations && window.firebaseReservations[sku]) || {};
+      const now = Date.now();
+      const mySessionId = stockSessionId;
+      
+      const reservedByOthers = Object.entries(reservations)
+        .filter(function(entry) {
+          const sid = entry[0];
+          const r = entry[1];
+          return sid !== mySessionId && r && r.expires > now;
+        })
+        .reduce(function(sum, entry) {
+          const r = entry[1];
+          return sum + (Number(r.qty) || 0);
+        }, 0);
+      
+      return Math.max(0, committedStockVal - reservedByOthers);
+    }
+
+    function toggleTransactionFields() {
+      const type = document.getElementById('transactionType').value;
+      const secKeluar = document.getElementById('sectionKeluar');
+      const secMasuk = document.getElementById('sectionMasuk');
+      const btnSubmit = document.getElementById('btnSubmitTransaction');
+      
+      if (type === 'KELUAR') {
+        secKeluar.style.display = 'block';
+        secMasuk.style.display = 'none';
+        btnSubmit.innerHTML = '<i class="bi bi-box-arrow-left me-1"></i> Kirim Pengeluaran';
+        btnSubmit.style.background = 'linear-gradient(135deg, #ef4444, #f59e0b)';
+      } else {
+        secKeluar.style.display = 'none';
+        secMasuk.style.display = 'block';
+        btnSubmit.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i> Kirim Pemasukan';
+        btnSubmit.style.background = 'linear-gradient(135deg, #22c55e, #06b6d4)';
+      }
+      
+      updateSoftReservationFirebase();
+    }
+
+    function updatePemasukanPreviewScanner() {
+      if (!scannedItem) return;
+      const qtyVal = Number(document.getElementById('inputQty').value) || 0;
+      const previewEl = document.getElementById('qtyInPreview');
+      
+      const isPak = document.getElementById('satPak') && document.getElementById('satPak').checked;
+      if (isPak && scannedItem.konversi_pak && qtyVal > 0) {
+        const converted = Math.round(qtyVal * scannedItem.konversi_pak);
+        previewEl.textContent = `Konversi ke Satuan Dasar: ${converted} ${scannedItem.satuan_stok}`;
+        previewEl.style.display = 'block';
+      } else {
+        previewEl.style.display = 'none';
+      }
+    }
+
+    function updateSoftReservationFirebase() {
+      updatePemasukanPreviewScanner();
+      
+      if (!activeSKU || !firebaseInitialized || typeof firebase === 'undefined') return;
+      
+      const type = document.getElementById('transactionType').value;
+      if (type !== 'KELUAR') {
+        clearReservation(activeSKU);
+        return;
+      }
+      
+      const qtyVal = Math.round(Number(document.getElementById('inputQty').value)) || 0;
+      
+      clearTimeout(reservationDebounceTimer);
+      reservationDebounceTimer = setTimeout(function() {
+        if (!activeSKU) return;
+        const expires = Date.now() + 5 * 60 * 1000; // 5 menit TTL
+        
+        firebase.database().ref('/zps_reservations/' + activeSKU + '/' + stockSessionId).set({
+          qty: qtyVal,
+          expires: expires
+        }).then(function() {
+          console.log('Firebase reservation written from scanner:', activeSKU, qtyVal);
+          
+          // Cek stok efektif yang tersisa
+          const currentEffective = getEffectiveStock(activeSKU, committedStock) + qtyVal;
+          const warnEl = document.getElementById('qtyWarning');
+          
+          if (qtyVal > currentEffective) {
+            warnEl.textContent = 'Peringatan: Jumlah melebihi stok tersedia (' + currentEffective + ' ' + (scannedItem ? scannedItem.satuan_stok : '') + ')!';
+            warnEl.style.display = 'block';
+          } else {
+            warnEl.style.display = 'none';
+          }
+        });
+      }, 300);
+    }
+
+    function clearReservation(sku) {
+      if (!firebaseInitialized || typeof firebase === 'undefined' || !sku) return;
+      firebase.database().ref('/zps_reservations/' + sku + '/' + stockSessionId).remove()
+        .then(() => console.log('Reservation cleared for', sku))
+        .catch(err => console.error('Clear reservation error:', err));
+    }
+
+    function listenToReservations(sku, originalStock) {
+      activeSKU = sku;
+      committedStock = originalStock;
+      
+      if (!firebaseInitialized || typeof firebase === 'undefined') {
+        updateDisplayedStock(committedStock);
+        return;
+      }
+      
+      stopListeningToReservations();
+      
+      firebaseListenerRef = firebase.database().ref('/zps_reservations');
+      firebaseListenerRef.on('value', function(snapshot) {
+        const allReservations = snapshot.val() || {};
+        window.firebaseReservations = allReservations;
+        
+        const effective = getEffectiveStock(sku, committedStock);
+        updateDisplayedStock(effective);
+      });
+    }
+    
+    function stopListeningToReservations() {
+      if (firebaseListenerRef) {
+        firebaseListenerRef.off();
+        firebaseListenerRef = null;
+      }
+    }
+
+    // ── Logika Identitas Operator ──
+    function getOperatorData() {
+      return {
+        role: localStorage.getItem('zps_scanner_role') || 'Karyawan',
+        username: localStorage.getItem('zps_scanner_username') || 'scanner',
+        name: localStorage.getItem('zps_scanner_name') || 'Scanner Client'
+      };
+    }
+
+    function showOperatorInfo() {
+      const op = getOperatorData();
+      document.getElementById('operatorInfo').textContent = `${op.name} [${op.role}]`;
+    }
+
+    function showOperatorSetup() {
+      const setupDiv = document.getElementById('operatorSetup');
+      const isHidden = setupDiv.style.display === 'none';
+      setupDiv.style.display = isHidden ? 'block' : 'none';
+      if (isHidden) {
+        const op = getOperatorData();
+        document.getElementById('setupOperatorName').value = op.name;
+        document.getElementById('setupOperatorRole').value = op.role;
+      }
+    }
+
+    function saveOperatorSetup() {
+      const name = document.getElementById('setupOperatorName').value.trim();
+      const role = document.getElementById('setupOperatorRole').value;
+      if (!name) {
+        alert('Nama operator wajib diisi.');
+        return;
+      }
+      localStorage.setItem('zps_scanner_name', name);
+      localStorage.setItem('zps_scanner_role', role);
+      localStorage.setItem('zps_scanner_username', name.toLowerCase().replace(/\s+/g, '_'));
+      
+      showOperatorInfo();
+      document.getElementById('operatorSetup').style.display = 'none';
+      logToDebug('Operator diatur ke: ' + name + ' (' + role + ')', 'success');
+    }
+
+    // ── Pengiriman Transaksi (AJAX) ──
+    async function submitTransaction() {
+      if (!scannedItem || !activeSKU) return;
+      
+      const type = document.getElementById('transactionType').value;
+      const qtyInput = Number(document.getElementById('inputQty').value);
+      const note = document.getElementById('catatan').value.trim();
+      const op = getOperatorData();
+      
+      if (isNaN(qtyInput) || qtyInput <= 0) {
+        alert('Jumlah transaksi harus berupa angka positif.');
+        return;
+      }
+      if (!Number.isInteger(qtyInput)) {
+        alert('Jumlah transaksi harus berupa bilangan bulat.');
+        return;
+      }
+      
+      const webappUrl = getWebappUrl();
+      if (!webappUrl) {
+        alert('URL Webapp belum terdaftar di memori.');
+        return;
+      }
+      
+      const btnSubmit = document.getElementById('btnSubmitTransaction');
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = 'Memproses...';
+      
+      let requestUrl = webappUrl + (webappUrl.includes('?') ? '&' : '?');
+      
+      if (type === 'KELUAR') {
+        const tujuan = document.getElementById('tujuanKeluar').value;
+        const divisi = document.getElementById('divisiTujuan').value.trim();
+        if (!divisi) {
+          alert('Divisi tujuan wajib diisi.');
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = '<i class="bi bi-box-arrow-left me-1"></i> Kirim Pengeluaran';
+          return;
+        }
+        
+        // Validasi stok efektif sisi klien
+        const currentEffective = getEffectiveStock(activeSKU, committedStock);
+        if (qtyInput > currentEffective) {
+          if (!confirm(`Stok tersedia hanya ${currentEffective} ${scannedItem.satuan_stok}. Tetap kirim? (Server mungkin akan menolak jika stok tidak mencukupi)`)) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="bi bi-box-arrow-left me-1"></i> Kirim Pengeluaran';
+            return;
+          }
+        }
+        
+        requestUrl += `action=submit_pengeluaran&sku=${encodeURIComponent(activeSKU)}` +
+                     `&jumlah=${qtyInput}&tujuan=${encodeURIComponent(tujuan)}` +
+                     `&divisi_tujuan=${encodeURIComponent(divisi)}&catatan=${encodeURIComponent(note)}` +
+                     `&role=${encodeURIComponent(op.role)}&username=${encodeURIComponent(op.username)}` +
+                     `&fullName=${encodeURIComponent(op.name)}`;
+      } else {
+        const isPak = document.getElementById('satPak') && document.getElementById('satPak').checked;
+        const satPilihan = isPak ? 'pak' : 'satuan';
+        const harga = Number(document.getElementById('hargaSatuan').value) || 0;
+        const supp = document.getElementById('supplier').value.trim();
+        
+        requestUrl += `action=submit_pemasukan&sku=${encodeURIComponent(activeSKU)}` +
+                     `&jumlah=${qtyInput}&satuan_pilihan=${satPilihan}` +
+                     `&harga_satuan=${harga}&supplier=${encodeURIComponent(supp)}` +
+                     `&catatan=${encodeURIComponent(note)}` +
+                     `&role=${encodeURIComponent(op.role)}&username=${encodeURIComponent(op.username)}` +
+                     `&fullName=${encodeURIComponent(op.name)}`;
+      }
+      
+      try {
+        logToDebug('Mengirim transaksi: ' + type + ' ' + qtyInput, 'info');
+        const res = await fetch(requestUrl, { method: 'GET', redirect: 'follow' });
+        const text = await res.text();
+        let result;
+        try {
+          result = JSON.parse(text);
+        } catch(e) {
+          throw new Error('Respons server bukan JSON. Pastikan Apps Script Web App sudah di-redeploy.');
+        }
+        
+        if (result && result.success) {
+          // Bersihkan reservasi Firebase
+          clearReservation(activeSKU);
+          stopListeningToReservations();
+          
+          playBeep();
+          vibrateDevice();
+          
+          // Kirim broadcast channel ke tab lokal lain
+          if (syncChannel) {
+            syncChannel.postMessage({
+              action: 'refresh_stok',
+              sku: activeSKU,
+              type: type,
+              jumlah: qtyInput
+            });
+            logToDebug('Broadcast update terkirim ke tab lain.', 'success');
+          }
+          
+          alert('Sukses! ' + result.message);
+          
+          activeSKU = null;
+          closeResult();
+          startScanner();
+        } else {
+          alert('Gagal: ' + (result.message || 'Error tidak diketahui.'));
+          btnSubmit.disabled = false;
+          if (type === 'KELUAR') {
+            btnSubmit.innerHTML = '<i class="bi bi-box-arrow-left me-1"></i> Kirim Pengeluaran';
+          } else {
+            btnSubmit.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i> Kirim Pemasukan';
+          }
+        }
+      } catch(e) {
+        logToDebug('Error submit: ' + e.message, 'error');
+        alert('Koneksi Gagal: ' + e.message);
+        btnSubmit.disabled = false;
+        if (type === 'KELUAR') {
+          btnSubmit.innerHTML = '<i class="bi bi-box-arrow-left me-1"></i> Kirim Pengeluaran';
+        } else {
+          btnSubmit.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i> Kirim Pemasukan';
+        }
       }
     }
 
     // ── Scan Again ──
     async function scanAgain() {
+      if (activeSKU) {
+        clearReservation(activeSKU);
+        stopListeningToReservations();
+        activeSKU = null;
+      }
       await stopScanner();
       closeResult();
       startScanner();
@@ -992,11 +1336,21 @@
 
     // ── Close Result ──
     function closeResult() {
+      if (activeSKU) {
+        clearReservation(activeSKU);
+        stopListeningToReservations();
+        activeSKU = null;
+      }
       document.getElementById('resultOverlay').classList.remove('visible');
     }
 
     // ── Go Back to Webapp ──
     function goBackToWebapp() {
+      if (activeSKU) {
+        clearReservation(activeSKU);
+        stopListeningToReservations();
+        activeSKU = null;
+      }
       const url = getWebappUrl();
       if (url) {
         window.location.href = url;
@@ -1013,7 +1367,6 @@
         return;
       }
       try {
-        // Unified: selalu ambil dari cameraStream, berlaku untuk native & jsqr
         const track = cameraStream.getVideoTracks()[0];
         if (!track) {
           logToDebug('Gagal mengakses track video kamera.', 'error');
@@ -1043,10 +1396,9 @@
     }
 
     // ════════════════════════════════════════════════════════════
-    // STEP 1: Inisialisasi Kamera (getUserMedia) — sama untuk semua mode
+    // STEP 1: Inisialisasi Kamera (getUserMedia)
     // ════════════════════════════════════════════════════════════
     async function initCamera() {
-      // 640x480: cukup resolusi untuk QR Code, sangat ringan di CPU & RAM
       cameraStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
@@ -1056,11 +1408,10 @@
         audio: false
       });
 
-      // Buat elemen video dan sambungkan stream
       const readerEl = document.getElementById('reader');
       readerEl.innerHTML = '';
       cameraVideo = document.createElement('video');
-      cameraVideo.setAttribute('playsinline', 'true'); // WAJIB di iOS Safari
+      cameraVideo.setAttribute('playsinline', 'true');
       cameraVideo.setAttribute('muted', 'true');
       cameraVideo.setAttribute('autoplay', 'true');
       cameraVideo.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;';
@@ -1071,7 +1422,6 @@
       isScanning = true;
       setStatus('Kamera aktif — arahkan ke QR Code', 'scanning');
 
-      // Cek kemampuan hardware (Torch & Zoom) via track langsung
       setTimeout(async () => {
         try {
           const track = cameraStream.getVideoTracks()[0];
@@ -1106,7 +1456,6 @@
 
     // ════════════════════════════════════════════════════════════
     // STEP 2A: Mode Native — BarcodeDetector (Android Chrome 83+)
-    // Kecepatan: ~100–300ms, diproses hardware
     // ════════════════════════════════════════════════════════════
     function startNativeDetection() {
       scanMode = 'native';
@@ -1140,37 +1489,28 @@
 
     // ════════════════════════════════════════════════════════════
     // STEP 2B: Mode jsQR — canvas + JavaScript decoder
-    // Kompatibel 100% dengan iPhone Safari, Android lama, semua browser
-    // Kecepatan: ~300–700ms (software, tapi stabil)
     // ════════════════════════════════════════════════════════════
     function startJsQRDetection() {
       scanMode = 'jsqr';
       logToDebug('Mesin: jsQR canvas decoder (universal, iPhone compatible)', 'success');
 
-      // Canvas 1280x720: resolusi lebih tinggi = QR bisa dibaca dari jarak lebih jauh
-      // Tetap 10fps agar tidak boros baterai iPhone
       const canvas = document.createElement('canvas');
       canvas.width  = 1280;
       canvas.height = 720;
-      // willReadFrequently: hint browser agar optimasi getImageData
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-      // setInterval 100ms = 10fps: andal & tidak boros baterai
       scanLoopId = setInterval(() => {
         if (!isScanning || scanMode !== 'jsqr') {
           clearInterval(scanLoopId);
           return;
         }
-        // Tunggu video siap (readyState 2 = HAVE_CURRENT_DATA)
         if (!cameraVideo || cameraVideo.readyState < 2) return;
 
-        // Ambil frame dari video ke canvas
         ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-        // Decode QR menggunakan jsQR
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert' // lebih cepat, QR standar tidak butuh inversi
+          inversionAttempts: 'dontInvert'
         });
 
         if (code && code.data && isScanning) {
@@ -1189,9 +1529,8 @@
       if (isScanning) return;
 
       try {
-        await initCamera(); // Langkah 1: Buka kamera (sama untuk semua)
+        await initCamera();
 
-        // Langkah 2: Pilih mesin deteksi
         const hasNative = typeof BarcodeDetector !== 'undefined';
         logToDebug('BarcodeDetector tersedia: ' + hasNative, hasNative ? 'success' : 'warn');
 
@@ -1209,7 +1548,7 @@
             startJsQRDetection();
           }
         } else {
-          startJsQRDetection(); // iPhone Safari, browser lama
+          startJsQRDetection();
         }
 
       } catch (err) {
@@ -1241,7 +1580,6 @@
     async function stopScanner() {
       if (!isScanning) return;
 
-      // Hentikan loop deteksi
       if (scanMode === 'native' && scanLoopId) {
         cancelAnimationFrame(scanLoopId);
       } else if (scanMode === 'jsqr' && scanLoopId) {
@@ -1250,7 +1588,6 @@
       scanLoopId  = null;
       isDetecting = false;
 
-      // Hentikan semua track kamera
       if (cameraStream) {
         cameraStream.getTracks().forEach(t => t.stop());
         cameraStream = null;
@@ -1260,7 +1597,6 @@
       isScanning = false;
       scanMode   = 'none';
 
-      // Reset tombol senter
       isTorchOn = false;
       const btn = document.getElementById('btnTorch');
       if (btn) {
@@ -1269,22 +1605,83 @@
       }
     }
 
+    // ── Logika Inisialisasi Firebase ──
+    function initFirebase() {
+      const dbUrl = localStorage.getItem('zps_firebase_url');
+      if (!dbUrl || typeof firebase === 'undefined' || firebaseInitialized) return;
+      try {
+        firebase.initializeApp({ databaseURL: dbUrl });
+        firebaseInitialized = true;
+        logToDebug('Firebase initialized: ' + dbUrl, 'success');
+        
+        firebase.database().ref('.info/connected').on('value', function(snapshot) {
+          if (snapshot.val() === true) {
+            logToDebug('Firebase status: Terkoneksi (Online)', 'success');
+            setStatus('Kamera aktif (Online) ✓', 'scanning');
+          } else {
+            logToDebug('Firebase status: Terputus (Offline)', 'warn');
+            setStatus('Kamera aktif (Offline)', 'error');
+          }
+        });
+      } catch(e) {
+        logToDebug('Error initFirebase: ' + e.message, 'error');
+      }
+    }
+
+    async function fetchFirebaseConfig() {
+      const webappUrl = getWebappUrl();
+      if (!webappUrl) return;
+      
+      const separator = webappUrl.includes('?') ? '&' : '?';
+      const configUrl = webappUrl + separator + 'action=get_firebase_config';
+      
+      try {
+        logToDebug('Mengambil config Firebase dari server...', 'info');
+        const res = await fetch(configUrl, { method: 'GET', redirect: 'follow' });
+        const json = await res.json();
+        if (json && json.FIREBASE_URL) {
+          localStorage.setItem('zps_firebase_url', json.FIREBASE_URL);
+          logToDebug('Firebase URL baru disimpan: ' + json.FIREBASE_URL, 'success');
+          initFirebase();
+        }
+      } catch(e) {
+        logToDebug('Gagal mengambil config Firebase: ' + e.message, 'warn');
+      }
+    }
+
     // ── Initialize ──
     document.addEventListener('DOMContentLoaded', function () {
-      logToDebug('Scanner App v3.1 (Universal Engine: Native + jsQR) initialized', 'success');
+      logToDebug('Scanner App v3.2 (Universal Engine: Native + jsQR) initialized', 'success');
       logToDebug('Browser UA: ' + navigator.userAgent, 'info');
       logToDebug('Viewport: ' + window.innerWidth + 'x' + window.innerHeight, 'info');
       logToDebug('Protokol: ' + window.location.protocol, 'info');
 
-      // Baca parameter query 'webapp_url' jika ada (untuk konfigurasi otomatis)
+      // Baca parameter query jika ada
       const urlParams = new URLSearchParams(window.location.search);
+      
+      // 1. Webapp URL
       const webappUrlParam = urlParams.get('webapp_url');
       if (webappUrlParam) {
         localStorage.setItem(STORAGE_KEY_URL, webappUrlParam.trim());
         logToDebug('URL Webapp baru diset dari parameter query: ' + webappUrlParam.trim(), 'success');
-        // Bersihkan parameter di bilah alamat agar rapi
+      }
+
+      // 2. Operator Session Params
+      const opRole = urlParams.get('role');
+      const opUsername = urlParams.get('username');
+      const opName = urlParams.get('name');
+
+      if (opRole) localStorage.setItem('zps_scanner_role', opRole);
+      if (opUsername) localStorage.setItem('zps_scanner_username', opUsername);
+      if (opName) localStorage.setItem('zps_scanner_name', opName);
+
+      if (opRole || opUsername || opName) {
+        logToDebug('Data operator disinkronkan dari webapp: ' + opName + ' (' + opRole + ')', 'success');
+      }
+
+      // Bersihkan parameter query di url bar browser HP agar rapi
+      if (window.location.search) {
         window.history.replaceState({}, document.title, window.location.pathname);
-        setStatus('URL Webapp terkonfigurasi otomatis ✓', 'scanning');
       }
 
       const webappUrl = getWebappUrl();
@@ -1292,7 +1689,15 @@
 
       if (!webappUrl) {
         setStatus('URL Webapp belum diatur — buka Pengaturan', 'error');
+      } else {
+        const dbUrl = localStorage.getItem('zps_firebase_url');
+        if (dbUrl) {
+          initFirebase();
+        } else {
+          fetchFirebaseConfig();
+        }
       }
+
       startScanner();
     });
 
@@ -1302,6 +1707,13 @@
         stopScanner();
       } else if (!document.getElementById('resultOverlay').classList.contains('visible')) {
         startScanner();
+      }
+    });
+
+    // Event listener sebelum unload tab untuk membersihkan reservasi
+    window.addEventListener('beforeunload', function() {
+      if (activeSKU) {
+        clearReservation(activeSKU);
       }
     });
   </script>
