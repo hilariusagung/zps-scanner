@@ -887,9 +887,22 @@
       const requestUrl = webappUrl + separator + 'action=get_scan_detail&sku=' + encodeURIComponent(sku);
 
       try {
-        logToDebug('Mengirim permintaan fetch ke: ' + requestUrl, 'info');
-        const response = await fetch(requestUrl);
-        const result = await response.json();
+        logToDebug('Fetch ke: ' + requestUrl, 'info');
+        const response = await fetch(requestUrl, {
+          method: 'GET',
+          redirect: 'follow'
+        });
+        const text = await response.text();
+        logToDebug('Response status: ' + response.status + ', length: ' + text.length, 'info');
+        let result;
+        try {
+          result = JSON.parse(text);
+        } catch(parseErr) {
+          // Server tidak mengembalikan JSON — kemungkinan redirect ke halaman login
+          logToDebug('Response bukan JSON: ' + text.substring(0, 100), 'error');
+          showResultError(sku, 'Server mengembalikan respons tidak valid. Pastikan Apps Script sudah di-redeploy dan deployment diset ke "Anyone" (bukan "Anyone with Google Account").');
+          return;
+        }
         
         if (result && result.success) {
           showResultSuccess(result.data);
@@ -897,8 +910,14 @@
           showResultError(sku, result.message || 'Barang tidak ditemukan di database.');
         }
       } catch (err) {
-        console.error('Fetch error:', err);
-        showResultError(sku, 'Gagal terhubung dengan server Google Apps Script. Pastikan koneksi internet aktif.');
+        console.error('Fetch error:', err.name, err.message);
+        logToDebug('Fetch error detail: ' + err.name + ' - ' + err.message, 'error');
+        
+        if (err.name === 'TypeError' && err.message.includes('fetch')) {
+          showResultError(sku, '❌ CORS Error: Browser memblokir koneksi ke Apps Script. Pastikan: 1) Deployment diset ke "Anyone", 2) URL benar dan belum kadaluarsa, 3) Koneksi internet aktif.');
+        } else {
+          showResultError(sku, 'Gagal terhubung: ' + err.message + '. Pastikan koneksi internet aktif dan URL Apps Script benar.');
+        }
       }
     }
 
@@ -1031,8 +1050,8 @@
       cameraStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
-          width:  { ideal: 640 },
-          height: { ideal: 480 }
+          width:  { ideal: 1280 },
+          height: { ideal: 720 }
         },
         audio: false
       });
@@ -1128,10 +1147,11 @@
       scanMode = 'jsqr';
       logToDebug('Mesin: jsQR canvas decoder (universal, iPhone compatible)', 'success');
 
-      // Canvas off-screen untuk capture frame
+      // Canvas 1280x720: resolusi lebih tinggi = QR bisa dibaca dari jarak lebih jauh
+      // Tetap 10fps agar tidak boros baterai iPhone
       const canvas = document.createElement('canvas');
-      canvas.width  = 640;
-      canvas.height = 480;
+      canvas.width  = 1280;
+      canvas.height = 720;
       // willReadFrequently: hint browser agar optimasi getImageData
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
