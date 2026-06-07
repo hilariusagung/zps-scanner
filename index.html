@@ -943,8 +943,12 @@
 
       showResultLoading(sku);
 
+      const token = localStorage.getItem('zps_scanner_auth_token') || '';
       const separator = webappUrl.includes('?') ? '&' : '?';
-      const requestUrl = webappUrl + separator + 'action=get_scan_detail&sku=' + encodeURIComponent(sku);
+      let requestUrl = webappUrl + separator + 'action=get_scan_detail&sku=' + encodeURIComponent(sku);
+      if (token) {
+        requestUrl += '&token=' + encodeURIComponent(token);
+      }
 
       try {
         logToDebug('Fetch ke: ' + requestUrl, 'info');
@@ -1347,6 +1351,7 @@
       btnSubmit.disabled = true;
       btnSubmit.textContent = 'Memproses...';
       
+      const token = localStorage.getItem('zps_scanner_auth_token') || '';
       let requestUrl = webappUrl + (webappUrl.includes('?') ? '&' : '?');
       
       const isPak = document.getElementById('satPak') && document.getElementById('satPak').checked;
@@ -1379,18 +1384,20 @@
         
         requestUrl += `action=submit_pengeluaran&sku=${encodeURIComponent(activeSKU)}` +
                      `&jumlah=${qtyInput}&satuan_pilihan=${satPilihan}&tujuan=${encodeURIComponent(tujuan)}` +
-                     `&divisi_tujuan=${encodeURIComponent(divisi)}&catatan=${encodeURIComponent(note)}` +
-                     `&role=${encodeURIComponent(op.role)}&username=${encodeURIComponent(op.username)}` +
-                     `&fullName=${encodeURIComponent(op.name)}`;
+                     `&divisi_tujuan=${encodeURIComponent(divisi)}&catatan=${encodeURIComponent(note)}`;
+        if (token) {
+          requestUrl += `&token=${encodeURIComponent(token)}`;
+        }
       } else {
         const supp = document.getElementById('supplier').value.trim();
         
         requestUrl += `action=submit_pemasukan&sku=${encodeURIComponent(activeSKU)}` +
                      `&jumlah=${qtyInput}&satuan_pilihan=${satPilihan}` +
                      `&supplier=${encodeURIComponent(supp)}` +
-                     `&catatan=${encodeURIComponent(note)}` +
-                     `&role=${encodeURIComponent(op.role)}&username=${encodeURIComponent(op.username)}` +
-                     `&fullName=${encodeURIComponent(op.name)}`;
+                     `&catatan=${encodeURIComponent(note)}`;
+        if (token) {
+          requestUrl += `&token=${encodeURIComponent(token)}`;
+        }
       }
       
       try {
@@ -1788,8 +1795,12 @@
       if (!activeSKU) return;
       const webappUrl = getWebappUrl();
       if (!webappUrl) return;
+      const token = localStorage.getItem('zps_scanner_auth_token') || '';
       const separator = webappUrl.includes('?') ? '&' : '?';
-      const requestUrl = webappUrl + separator + 'action=get_scan_detail&sku=' + encodeURIComponent(activeSKU);
+      let requestUrl = webappUrl + separator + 'action=get_scan_detail&sku=' + encodeURIComponent(activeSKU);
+      if (token) {
+        requestUrl += '&token=' + encodeURIComponent(token);
+      }
       
       try {
         logToDebug('Background fetch untuk update stok committed SKU: ' + activeSKU, 'info');
@@ -1879,14 +1890,21 @@
       // Baca parameter query jika ada
       const urlParams = new URLSearchParams(window.location.search);
       
-      // 1. Webapp URL
+      // 1. Token Auth
+      const tokenParam = urlParams.get('token');
+      if (tokenParam) {
+        localStorage.setItem('zps_scanner_auth_token', tokenParam.trim());
+        logToDebug('Token scanner disinkronkan dari webapp.', 'success');
+      }
+
+      // 2. Webapp URL
       const webappUrlParam = urlParams.get('webapp_url');
       if (webappUrlParam) {
         localStorage.setItem(STORAGE_KEY_URL, webappUrlParam.trim());
         logToDebug('URL Webapp baru diset dari parameter query: ' + webappUrlParam.trim(), 'success');
       }
 
-      // 2. Operator Session Params & Permissions
+      // 3. Operator Session Params & Permissions
       const opRole = urlParams.get('role');
       const opUsername = urlParams.get('username');
       const opName = urlParams.get('name');
